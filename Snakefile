@@ -46,7 +46,7 @@ rule RunHifiasm:
 		gfa = "{pwd_directory}/hifiasm/hifiasm.p_ctg.gfa",
 		fasta = "{pwd_directory}/hifiasm/hifiasm.p_ctg.fasta",
 		fai = "{pwd_directory}/hifiasm/hifiasm.p_ctg.fasta.fai"
-	threads: 30
+	threads: 10
 	conda: "envs/hifiasm.yaml"
 	shell:
             """
