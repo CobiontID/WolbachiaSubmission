@@ -1,0 +1,7 @@
+name: treebuild
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - mafft
+  - iqtree

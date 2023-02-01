@@ -1,0 +1,5 @@
+name: ete3
+channels:
+  - etetoolkit
+dependencies:
+  - ete3

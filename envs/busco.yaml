@@ -1,0 +1,6 @@
+name: busco_v522
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - busco=5.2.2
