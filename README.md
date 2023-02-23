@@ -16,3 +16,10 @@ This pipeline can now be run with the following command:
 ```
 snakemake --configfile $configfile --cores 10 --use-conda --conda-prefix $condadir -s $pipelinedir/Snakefile
 ```
+
+Or with singularity:
+
+```
+singularity pull docker://emvcaest/wolbachia_submission:latest
+singularity run wolbachia_submission.sif snakemake --cores $threads --use-conda --conda-prefix /opt/conda/ -s /WolbachiaSubmission/Snakefile --configfile $configfile
+```
