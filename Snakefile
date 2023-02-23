@@ -317,6 +317,7 @@ checkpoint Bin_Circular:
 	Move all fasta bins to directory supergroup
 	"""
 	input:
+		binsdone = "{pwd_directory}/bins_SSU_done.txt",
 		bins_quality = "{pwd_directory}/bins_done.txt",
 		binlist = "{pwd_directory}/bin_list.txt"
 	output:
@@ -342,7 +343,6 @@ rule AnnotateRotate:
 	Annotate circular genomes to rotate at HemE
 	"""
 	input:
-		binsdone = "{pwd_directory}/bins_SSU_done.txt",
 		fasta = "{pwd_directory}/supergroup/bin.{circ}.fa"
 	output:
 		circ_fa = "{pwd_directory}/circular/{circ}.fa"
@@ -376,6 +376,7 @@ checkpoint Bin_Linear:
 	Move all fasta bins to directory supergroup
 	"""
 	input:
+		binsdone = "{pwd_directory}/bins_SSU_done.txt",
 		bins_quality = "{pwd_directory}/bins_done.txt",
 		binlist = "{pwd_directory}/bin_list.txt"
 	output:
@@ -419,6 +420,7 @@ checkpoint Bin_Mags:
 	Move all fasta bins to directory supergroup
 	"""
 	input:
+		binsdone = "{pwd_directory}/bins_SSU_done.txt",
 		bins_quality = "{pwd_directory}/bins_done.txt",
 		binlist = "{pwd_directory}/bin_list.txt",
 	output:
