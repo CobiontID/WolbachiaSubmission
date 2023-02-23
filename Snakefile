@@ -30,11 +30,28 @@ rule all:
 		expand('{pwd_dir}/mags_done.txt', pwd_dir=config["pwd_directory"]),
 		expand('{pwd_dir}/Wolbachia.done.txt', pwd_dir=config["pwd_directory"])
 
+
+rule CheckPresenceWolbachia:
+	"""
+	check if this sample contains Wolbachia
+	"""
+	input:
+		taxfile = expand("{tax}", tax=config["taxfile"])
+	output:
+		wolpresence = "{pwd_directory}/Wol_presence.txt"
+	shell:
+			"""
+			if grep -q Wolbachia {input.taxfile} && [ -d {pwd} ]; then
+				touch {output.wolpresence}
+			fi
+			"""
+
 rule RunHifiasm:
 	"""
 	check if hifiasm was already run, if not re-try
 	"""  
 	input:
+		wolpresence = "{pwd_directory}/Wol_presence.txt",
 		fasta_reads = expand("{pwd}/kraken.fa", pwd=config["workingdirectory"])
 	params:
 		assemblyprefix = "{pwd_directory}/hifiasm/hifiasm",
