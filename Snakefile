@@ -342,6 +342,7 @@ rule AnnotateRotate:
 	Annotate circular genomes to rotate at HemE
 	"""
 	input:
+		binsdone = "{pwd_directory}/bins_SSU_done.txt",
 		fasta = "{pwd_directory}/supergroup/bin.{circ}.fa"
 	output:
 		circ_fa = "{pwd_directory}/circular/{circ}.fa"
