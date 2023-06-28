@@ -1,6 +1,6 @@
 my_envs = ['busco.yaml',
            'cdhit.yaml',
-           'hifiasm.yaml',
+           'hifiasm_seqtk.yaml',
            'hmmer.yaml',
            'prokka.yaml',
            'ete3.yaml',
