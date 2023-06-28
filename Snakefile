@@ -10,6 +10,7 @@ Basic usage:
 scriptdir = workflow.basedir+"/Scripts"
 SSUHMMfile = workflow.basedir+"/SSU_Prok_Euk_Microsporidia.hmm"
 SSUalnfile = workflow.basedir+"/SSU.aln.fa"
+ncbi_taxdir = workflow.basedir+"/taxonomy"
 
 pwd = config["workingdirectory"]
 pwd_dir = config["pwd_directory"]
@@ -64,14 +65,20 @@ rule RunHifiasm:
 		fasta = "{pwd_directory}/hifiasm/hifiasm.p_ctg.fasta",
 		fai = "{pwd_directory}/hifiasm/hifiasm.p_ctg.fasta.fai"
 	threads: 10
-	conda: "envs/hifiasm.yaml"
+	conda: "envs/hifiasm_seqtk.yaml"
 	shell:
             """
 			if [ ! -d {output.dirname2} ]; then
 				mkdir {output.dirname2}
+				cp {input.fasta_reads} {pwd_dir}/hifiasm/reads.fa
 			fi
             if [ -s {input.fasta_reads} ] && [ ! -s {params.gfa2} ] ; then
-				hifiasm -o {params.assemblyprefix} -t {threads} {input.fasta_reads} -D 10 -l 1 -s 0.999 || true
+				echo {input.fasta_reads}
+				linecount=$(grep -c '>' < {input.fasta_reads})
+				if [ $linecount -ge 50000 ]; then
+					seqtk sample {input.fasta_reads} 50000 > {pwd_dir}/hifiasm/reads.fa
+				fi
+				hifiasm -o {params.assemblyprefix} -t {threads} {pwd_dir}/hifiasm/reads.fa -D 10 -l 1 -s 0.999 || true
 				awk '/^S/{{print ">"$2"\\n"$3}}' {output.gfa} | fold > {output.fasta} || true
 				faidx {output.fasta}
 			else
@@ -79,7 +86,7 @@ rule RunHifiasm:
 				cp {params.dirname}/hifiasm.p_ctg.fasta {output.fasta} 
 				cp {params.dirname}/hifiasm.p_ctg.fasta.fai {output.fai}
 			fi
-            touch {output.completed}
+			touch {output.completed}
 			"""
 
 rule RunBuscoAssembly:
@@ -275,6 +282,33 @@ rule Build_SSU_Tree:
 			touch {output.aln16SLoci} {output.treefile}
 		fi
 		"""
+rule DownloadNCBITaxonomy:
+        """
+        Download current version of NCBI taxonomy
+        """
+        output:
+                donefile = temporary("{pwd_directory}/taxdownload.done.txt")
+        shell:
+                """
+                if [ ! -d {ncbi_taxdir} ]; then
+                        mkdir {ncbi_taxdir}
+                fi
+                if [ -s {ncbi_taxdir}/names.dmp ]; then
+                        before=$(date -d 'today - 180 days' +%s)
+                        timestamp=$(stat -c %y {ncbi_taxdir}/names.dmp | cut -f1 -d ' ')
+                        timestampdate=$(date -d $timestamp +%s)
+                fi
+        if [ ! -s {ncbi_taxdir}/names.dmp ] || [ $before -ge $timestampdate ]; then
+                        curl -R https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz.md5 --output {ncbi_taxdir}/taxdump.tar.gz.md5
+                        curl -R https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz --output taxdump.tar.gz
+                        tar -C {ncbi_taxdir} -xzf taxdump.tar.gz names.dmp nodes.dmp
+			rm taxdump.tar.gz
+                fi
+                touch {output.donefile}
+                """
+
+
+
 
 rule Supergroup:
 	"""
@@ -282,7 +316,9 @@ rule Supergroup:
 	"""
 	input:
 		treefile = "{pwd_directory}/supergroup/{bin}.ProkSSU.treefile",
-		fasta16SLoci = "{pwd_directory}/supergroup/{bin}.ProkSSU.fa"
+		fasta16SLoci = "{pwd_directory}/supergroup/{bin}.ProkSSU.fa",
+		taxfile = expand("{tax}", tax=config["taxfile"]),
+		taxdone = "{pwd_directory}/taxdownload.done.txt"
 	params:
 		binname = "{bin}"
 	output:
@@ -291,7 +327,7 @@ rule Supergroup:
 	shell:	
 		"""
 		if [ -s {input.fasta16SLoci} ]; then
-			python {scriptdir}/WolbachiaSupergroup.py -t {input.treefile} -c {input.fasta16SLoci} -b {params.binname} -s {host} -o {output.supergroup_name} -sts {stsfile}  -i {tolid}
+			python {scriptdir}/WolbachiaSupergroup.py -t {input.treefile} -c {input.fasta16SLoci} -b {params.binname} -s {host} -o {output.supergroup_name} -sts {stsfile}  -i {tolid} -na {ncbi_taxdir}/names.dmp -no {ncbi_taxdir}/nodes.dmp -ta {input.taxfile}
 			cp {output.supergroup_name} {outdir}/{params.binname}.speciesname.txt
 		else
 			touch {output.supergroup_name}
