@@ -4,3 +4,4 @@ channels:
 dependencies:
   - hifiasm=0.14
   - pyfaidx
+  - seqtk=1.3
