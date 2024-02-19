@@ -405,6 +405,8 @@ rule AnnotateRotate:
 		rm {outdir}"/"{params.circname}"."$today"/"{params.circname}".fa.gz"
 		cp {output.circ_fa} {outdir}"/"{params.circname}"."$today
 		gzip {outdir}"/"{params.circname}"."$today"/"{params.circname}".fa"
+
+		sh cobiont_curation_request.sh {outdir}"/"{params.circname}"."$today"/"{params.circname}".yaml" {email}
 		"""
 
 def aggregate_circs(wildcards):
@@ -441,12 +443,10 @@ checkpoint Bin_Linear:
 			shortname=`echo $p | cut -d, -f1`
 			if [ -f {pwd_dir}/$shortname.list ] && grep "Linear" {pwd_dir}/$shortname.list ; then
 				touch {output.superdir}/bin.$shortname.txt
-				#cp {pwd_dir}/supergroup/bin.$shortname.fa {outdir}/$shortname.fa 
-				#cp {pwd_dir}/$shortname.metadata.txt {pwd_dir}/$shortname.list {outdir}
+				sh cobiont_curation_request.sh {outdir}"/"{params.circname}"."$today"/"{params.circname}".yaml" {email}
 			elif [ ! -f {pwd_dir}/$shortname.list ] && [ ! -f {pwd_dir}/$shortname.manifest.txt ] && [ -f {pwd_dir}/$shortname.metadata.txt ] ; then
 				touch {output.superdir}/bin.$shortname.txt
-				#cp {pwd_dir}/supergroup/bin.$shortname.fa {outdir}/$shortname.fa 
-				#cp {pwd_dir}/$shortname.metadata.txt {outdir}
+				sh cobiont_curation_request.sh {outdir}"/"{params.circname}"."$today"/"{params.circname}".yaml" {email}
 			fi
         done < {input.binlist}
 		"""
