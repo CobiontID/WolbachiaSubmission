@@ -10,16 +10,35 @@ parser.add_argument("-o", type=str, action='store', dest='output', metavar='OUTP
 parser.add_argument('--version', action='version', version='%(prog)s 1.0')
 results = parser.parse_args()
 
-seen={}
+seen=[]
 f =open(results.input,'r')
 for record in f:
-    record=record.strip()
-    string=str(';'.join(record.split('\t')[0:4]))
-    if string not in seen:
-        seen[string]=[]
-    seen[string].append(record.split('\t')[5])
+    idname=record.strip().split('\t')[0]
+    idname_conv=idname.replace(' ','%20').strip()
+    idname_conv1=idname.replace(' ','_').replace('(','_').replace(')','_').strip()
+    #print(idname)
+    cmd='curl -X GET --header "Accept: application/json" "https://www.ebi.ac.uk/ena/taxonomy/rest/scientific-name/'+idname_conv+'" --output '+idname_conv1+'.json'
+    os.system(cmd)
+    if os.path.getsize(idname_conv1+'.json') > 11:
+        f = open(idname_conv1+'.json')
+        data = json.load(f)
+        if 'taxId' in data[0]:
+            seen.append(idname)
+            #print(data[0]['taxId'])
+        else:
+            print('NO RECORD YET FOR '+idname)
+        #os.system('rm sample.json')
+    else:
+        print('NO RECORD YET FOR '+idname)
+    cmd='rm '+idname_conv1+'.json'
+    os.system(cmd)
+
 
 o=open(results.output,'a')
-for taxs in seen:
-    o.write(taxs.replace(';','\t')+'\t'+','.join(seen[taxs])+'\n')
+for record in f:
+    record=record.strip()
+    idname=record.strip().split('\t')[0]
+    if idname not in seen:
+        o.write(record+'\n')
 o.close()
+f.close()

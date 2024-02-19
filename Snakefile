@@ -349,9 +349,11 @@ rule concatenate_bins:
 		"""
 		#write code here to submit email to ENA taxid request
 		cut -f1-5 {pwd_dir}/taxid.nr.txt | sort | uniq > {pwd_dir}/taxid_request.txt
-		sh {scriptdir}/email_request_taxids.sh {pwd_dir}/taxid_request.txt {email}
-		#add line to general file with taxnames to look up including comma-separated bin list
-		python {scriptdir}/taxid_requests.py -i {pwd_dir}/taxid.nr.txt -o {taxreq}
+
+		#add script double-check it doesn't exist
+		python {scriptdir}/taxid_requests.py -i {pwd_dir}/taxid_request.txt -o {pwd_dir}/taxid_request.novel.txt
+		sh {scriptdir}/email_request_taxids.sh {pwd_dir}/taxid_request.novel.txt {email}
+
 		rm {pwd_dir}/taxid.nr.txt
 		touch {output}
 		"""
