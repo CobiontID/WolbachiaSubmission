@@ -185,16 +185,16 @@ if res == True:
     supergroup_name=list(ctgs.values())[0]
     if supergroup_name != "Unclear":
         if multiple_host == True:
-            o.write('Wolbachia sp. (group '+supergroup_name+') '+'\t'+results.bin+"\t"+biospecimen+"\n")
+            o.write('Wolbachia sp. (group '+supergroup_name+') '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
         else:
-            o.write('Wolbachia endosymbiont (group '+supergroup_name+') of '+results.host.replace("_"," ")+'\t'+results.bin+"\t"+biospecimen+"\n")
+            o.write('Wolbachia endosymbiont (group '+supergroup_name+') of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
     else:
         if multiple_host == True:
-            o.write('Wolbachia sp. '+'\t'+results.bin+'\t'+biospecimen+"\n")
+            o.write('Wolbachia sp. '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
         else:
-            o.write('Wolbachia endosymbiont of '+results.host.replace("_"," ")+'\t'+results.bin+'\t'+biospecimen+"\n")
+            o.write('Wolbachia endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
 else:
     if multiple_host == True:
-        o.write('Wolbachia sp. '+'\t'+results.bin+"\t"+biospecimen+"\n")
+        o.write('Wolbachia sp. '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
     else:
-        o.write('Wolbachia endosymbiont of '+results.host.replace("_"," ")+'\t'+results.bin+"\t"+biospecimen+"\n")
+        o.write('Wolbachia endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')

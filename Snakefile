@@ -19,6 +19,8 @@ host = config["scientific_name"]
 outdir = config["outdir"]
 stsfile = config["stsfile"]
 gfa = config["gfafile"]
+email = config["email"]
+taxreq = config["taxreq"]
 
 rule all:
 	input:
@@ -100,8 +102,7 @@ rule RunBuscoAssembly:
 		buscodir = directory(expand("{pwd}/buscoAssembly",pwd=config["workingdirectory"])),
 		buscodir2 = directory("{pwd_directory}/buscoAssembly"),
 		buscodbs = "{pwd_directory}/info_dbs_assembly.txt",
-		buscoini = "{pwd_directory}/config_busco_assembly.ini",
-		buscoini2 = "{pwd_directory}/config_busco_assembly.ini",
+		buscoini = "{pwd_directory}/config_busco_assembly.ini"
 	output:
 		completed = "{pwd_directory}/buscoAssembly.done.txt",
 		summary = "{pwd_directory}/buscoAssembly/completeness_per_contig.txt"
@@ -191,7 +192,7 @@ rule WolbachiaQuality:
 		binlist = "{pwd_directory}/bin_list.txt"
 	shell:
 		"""
-		python {scriptdir}/WolbachiaQuality.py -d {input.summary} -t {tolid} -l {output.binlist} -g {gfa} -d2 {input.orig_dir}
+		python {scriptdir}/WolbachiaQuality.py -d {input.summary} -t {tolid} -l {output.binlist} -g {gfa} -d2 {input.orig_dir} -o {outdir}
 		touch {output.completed}
 		"""
 
@@ -307,9 +308,6 @@ rule DownloadNCBITaxonomy:
                 touch {output.donefile}
                 """
 
-
-
-
 rule Supergroup:
 	"""
 	Link novel Wolbachia SSU to a supergroup
@@ -327,8 +325,12 @@ rule Supergroup:
 	shell:	
 		"""
 		if [ -s {input.fasta16SLoci} ]; then
-			python {scriptdir}/WolbachiaSupergroup.py -t {input.treefile} -c {input.fasta16SLoci} -b {params.binname} -s {host} -o {output.supergroup_name} -sts {stsfile}  -i {tolid} -na {ncbi_taxdir}/names.dmp -no {ncbi_taxdir}/nodes.dmp -ta {input.taxfile}
-			cp {output.supergroup_name} {outdir}/{params.binname}.speciesname.txt
+			python {scriptdir}/WolbachiaSupergroup.py -t {input.treefile} -c {input.fasta16SLoci} -b {params.binname} -s {host} -o {output.supergroup_name} -sts {stsfile} -i {tolid} -na {ncbi_taxdir}/names.dmp -no {ncbi_taxdir}/nodes.dmp -ta {input.taxfile}
+			speciesname=` cat {output.supergroup_name} | cut -f1`
+			echo "species: "$speciesname >>  {outdir}/{params.binname}*/{params.binname}*.yaml
+			#cp {output.supergroup_name} {outdir}/{params.binname}.speciesname.txt
+			#write code here to add novel name to file
+			cat {output.supergroup_name} >> {pwd_dir}/taxid.nr.txt
 		else
 			touch {output.supergroup_name}
 		fi
@@ -345,6 +347,12 @@ rule concatenate_bins:
 		"{pwd_directory}/bins_SSU_done.txt"
 	shell:
 		"""
+		#write code here to submit email to ENA taxid request
+		cut -f1-5 {pwd_dir}/taxid.nr.txt | sort | uniq > {pwd_dir}/taxid_request.txt
+		sh {scriptdir}/email_request_taxids.sh {pwd_dir}/taxid_request.txt {email}
+		#add line to general file with taxnames to look up including comma-separated bin list
+		python {scriptdir}/taxid_requests.py -i {pwd_dir}/taxid.nr.txt -o {taxreq}
+		rm {pwd_dir}/taxid.nr.txt
 		touch {output}
 		"""
 
@@ -366,10 +374,10 @@ checkpoint Bin_Circular:
  		while read p
 		do
 			shortname=`echo $p | cut -d, -f1`
-			echo {output.superdir}/bin.$shortname.fa
+			echo {pwd_dir}/$shortname.list
 			if [ -f {pwd_dir}/$shortname.list ] && grep "Circular" {pwd_dir}/$shortname.list ; then
+				echo {output.superdir}/bin.$shortname.fa
 				touch {output.superdir}/bin.$shortname.txt
-				cp {pwd_dir}/$shortname.metadata.txt {pwd_dir}/$shortname.list {outdir}
 			fi
         done < {input.binlist}
 		"""
@@ -379,7 +387,8 @@ rule AnnotateRotate:
 	Annotate circular genomes to rotate at HemE
 	"""
 	input:
-		fasta = "{pwd_directory}/supergroup/bin.{circ}.fa"
+		fasta = "{pwd_directory}/supergroup/bin.{circ}.fa",
+		binname= "{pwd_directory}/circular/bin.{circ}.txt"
 	output:
 		circ_fa = "{pwd_directory}/circular/{circ}.fa"
 	params:
@@ -390,7 +399,10 @@ rule AnnotateRotate:
 		"""
 		prokka --cpus {threads} --outdir {pwd_dir}/circular/{params.circname}.prokka --prefix {params.circname} {input.fasta}
 		python {scriptdir}/RotateRevComp.py -gff {pwd_dir}/circular/{params.circname}.prokka/{params.circname}.gff -fa {input.fasta} -o {output.circ_fa}
-		cp {output.circ_fa} {outdir}
+		today="$(date +'%Y%m%d')"
+		rm {outdir}"/"{params.circname}"."$today"/"{params.circname}".fa.gz"
+		cp {output.circ_fa} {outdir}"/"{params.circname}"."$today
+		gzip {outdir}"/"{params.circname}"."$today"/"{params.circname}".fa"
 		"""
 
 def aggregate_circs(wildcards):
@@ -427,12 +439,12 @@ checkpoint Bin_Linear:
 			shortname=`echo $p | cut -d, -f1`
 			if [ -f {pwd_dir}/$shortname.list ] && grep "Linear" {pwd_dir}/$shortname.list ; then
 				touch {output.superdir}/bin.$shortname.txt
-				cp {pwd_dir}/supergroup/bin.$shortname.fa {outdir}/$shortname.fa 
-				cp {pwd_dir}/$shortname.metadata.txt {pwd_dir}/$shortname.list {outdir}
+				#cp {pwd_dir}/supergroup/bin.$shortname.fa {outdir}/$shortname.fa 
+				#cp {pwd_dir}/$shortname.metadata.txt {pwd_dir}/$shortname.list {outdir}
 			elif [ ! -f {pwd_dir}/$shortname.list ] && [ ! -f {pwd_dir}/$shortname.manifest.txt ] && [ -f {pwd_dir}/$shortname.metadata.txt ] ; then
 				touch {output.superdir}/bin.$shortname.txt
-				cp {pwd_dir}/supergroup/bin.$shortname.fa {outdir}/$shortname.fa 
-				cp {pwd_dir}/$shortname.metadata.txt {outdir}
+				#cp {pwd_dir}/supergroup/bin.$shortname.fa {outdir}/$shortname.fa 
+				#cp {pwd_dir}/$shortname.metadata.txt {outdir}
 			fi
         done < {input.binlist}
 		"""
@@ -471,8 +483,8 @@ checkpoint Bin_Mags:
 			shortname=`echo $p | cut -d, -f1`
 			if [ -f {pwd_dir}/$shortname.manifest.txt ] ; then
 				mv {pwd_dir}/$shortname.manifest.txt {output.superdir}
-				cp {output.superdir}/$shortname.manifest.txt {outdir}
-				cp {pwd_dir}/supergroup/bin.$shortname.fa {outdir}/$shortname.mag.fa 
+				#cp {output.superdir}/$shortname.manifest.txt {outdir}
+				#cp {pwd_dir}/supergroup/bin.$shortname.fa {outdir}/$shortname.mag.fa 
 			fi
         done < {input.binlist}
 		"""
