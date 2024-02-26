@@ -1,7 +1,9 @@
 name: hifiasm
 channels:
   - bioconda
+  - conda-forge
+  - defaults
 dependencies:
-  - hifiasm=0.14
+  - hifiasm=0.19.8
   - pyfaidx
   - seqtk=1.3
