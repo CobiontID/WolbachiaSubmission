@@ -34,10 +34,12 @@ m.close()
 totalfound2=0
 total_busco2=0
 complete2=0
+ctgs_busco=[]
 k=open(dirshort+'/busco/completeness_per_contig.txt')
 for rec in k:
     if not rec.startswith('#'):
         ctg=rec.split('\t')[0]
+        ctgs_busco.append(ctg)
         totalfound2+=int(rec.split('\t')[1])
         total_busco2=int(rec.split('\t')[2])
         if float(rec.split('\t')[3].split('%')[0]) > 97 and float(rec.split('\t')[5]) > 700000 and float(rec.split('\t')[5]) < 2400000:
@@ -154,6 +156,11 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                             ctgs.append(novelctg)
                     b.close()
 
+                    today=datetime.today().strftime('%Y%m%d')
+                    outdir=results.out+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.'+today
+                    cmd="mkdir "+outdir
+                    os.system(cmd)
+
                     gfafile=dirshort+'/hifiasm/hifiasm.p_ctg.gfa'
                     n=open(gfafile,'r')
                     final_coverage=0
@@ -168,7 +175,7 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                         lst.write(ctg+'\t1\tLinear-Chromosome\n')
                         lst.close()
                         lst2=open(dirshort+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.list', 'w')
-                        lst2.write(ctg+'\t1\Linear-Chromosome\n')
+                        lst2.write(ctg+'\t1\tLinear-Chromosome\n')
                         lst2.close()
                     else:
                         calc_cov=0
@@ -185,11 +192,6 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                                 print(line.split('\t')[1]+'\t'+str(length)+'\t'+str(cov))    
                         final_coverage=int(calc_cov/total_len)
                     n.close()
-                    
-                    today=datetime.today().strftime('%Y%m%d')
-                    outdir=results.out+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.'+today
-                    cmd="mkdir "+outdir
-                    os.system(cmd)
 
                     y=open(outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.yaml', 'w')
                     y.write('---'+'\n')
@@ -204,7 +206,7 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                     y.write('primary: '+outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa.gz'+'\n')
                     y.write('jira_queue: DS'+'\n')
                     #y.write('biosample: '+biosample+'\n')
-                    y.write('coverage: '+str(coverage)+'\n')
+                    y.write('coverage: '+str(final_coverage)+'\n')
                     #y.write('taxid: '+str(taxid)+'\n')
                     y.write('assembly_source: MarkerScan'+'\n')
                     y.write('pipeline:'+'\n')
@@ -242,9 +244,26 @@ else:
     binlistfile.write(results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1\n')
     fafile=dirshort+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa'
     orig_fafile=results.dir2+'/Anaplasmataceae.finalassembly.fa'
-    cmd="cp "+orig_fafile+" "+fafile
-    os.system(cmd)
-    
+    if os.path.getsize(orig_fafile):
+        cmd="cp "+orig_fafile+" "+fafile
+        os.system(cmd)
+    elif os.path.getsize(results.dir2+'/Anaplasmataceae.ctgs.fa'):
+        k=open(results.dir2+'/Anaplasmataceae.ctgs.fa','r')
+        o=open(fafile,'w')
+        for line in k:
+            line=line.strip
+            if line.startswith('>'):
+                if line.split('>')[1] in ctgs_busco:
+                    found=1
+                    o.write(line)
+                else:
+                    found=0
+            else:
+                if found == 1:
+                    o.write(line)
+        k.close()
+        o.close()
+
     ctglist=[]
     n=open(orig_fafile,'r')
     for line in n:
@@ -255,8 +274,25 @@ else:
 
     calc_cov=0
     total_len=0
-    gfafile2=results.gfa.split('.p_ctg')[0]+'.a_ctg.noseq.gfa'
-    gfafiles=[results.gfa, gfafile2]
+    if results.gfa.endswith('gz'):
+        gfafile2=results.gfa.split('.p_ctg')[0]+'.a_ctg.noseq.gfa.gz'
+        cmd='cp '+results.gfa+' '+dirshort+'/'
+        os.system(cmd)
+        #print(cmd)
+        cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1]
+        #print(cmd)
+        os.system(cmd)
+        cmd='cp '+gfafile2+' '+dirshort+'/'
+        #print(cmd)
+        os.system(cmd)
+        cmd='gunzip '+dirshort+'/'+gfafile2.split('/')[-1]
+        #print(cmd)
+        os.system(cmd)
+        gfafiles=[dirshort+'/'+results.gfa.split('/')[-1].split('.gz')[0], dirshort+'/'+gfafile2.split('/')[-1].split('.gz')[0]]
+    else:
+        gfafile2=results.gfa.split('.p_ctg')[0]+'.a_ctg.noseq.gfa'
+        gfafiles=[results.gfa, gfafile2]
+        
     for gfa in gfafiles:
         l=open(gfa,'r')
         for line in l:

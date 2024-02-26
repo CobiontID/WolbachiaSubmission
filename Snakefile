@@ -20,7 +20,6 @@ outdir = config["outdir"]
 stsfile = config["stsfile"]
 gfa = config["gfafile"]
 email = config["email"]
-taxreq = config["taxreq"]
 
 rule all:
 	input:
@@ -81,6 +80,7 @@ rule RunHifiasm:
 					seqtk sample {input.fasta_reads} 50000 > {pwd_dir}/hifiasm/reads.fa
 				fi
 				hifiasm -o {params.assemblyprefix} -t {threads} {pwd_dir}/hifiasm/reads.fa -D 10 -l 1 -s 0.999 || true
+				mv {pwd_dir}/hifiasm/hifiasm.bp.p_ctg.gfa  {output.gfa}
 				awk '/^S/{{print ">"$2"\\n"$3}}' {output.gfa} | fold > {output.fasta} || true
 				faidx {output.fasta}
 			else
@@ -141,7 +141,7 @@ rule RunBusco:
 	input:
 		hifiasm_done = "{pwd_directory}/assembly_done.txt",
 	params:
-		circgenome =  expand("{pwd}/Anaplasmataceae.finalassembly.fa",pwd=config["workingdirectory"]),
+		circgenome =  expand("",pwd=config["workingdirectory"]),
 		buscodir = directory(expand("{pwd}/busco",pwd=config["workingdirectory"])),
 		buscodir2 = directory("{pwd_directory}/busco"),
 		buscodbs = "{pwd_directory}/info_dbs_assembly.txt",
@@ -164,17 +164,23 @@ rule RunBusco:
 					cp {params.buscodir}/busco/run*/full_table.tsv {params.buscodir2}
 				fi
 			else
-				if [ -s {params.circgenome} ] ; then
+				if [ -s {pwd}/Anaplasmataceae.finalassembly.fa ] ; then
 					busco --list-datasets > {params.buscodbs}
-                	python {scriptdir}/BuscoConfig.py -f {params.circgenome} -d {params.buscodir2} -dl busco_data/ -c {threads} -db {params.buscodbs} -o {params.buscoini}
+                	python {scriptdir}/BuscoConfig.py -f {pwd}/Anaplasmataceae.finalassembly.fa -d {params.buscodir2} -dl busco_data/ -c {threads} -db {params.buscodbs} -o {params.buscoini}
                 	busco --config {params.buscoini} -f || true
-					mv {params.buscodir2}/busco/run*/full_table.tsv {params.buscodir2}
+					mv {params.buscodir2}/busco/run*/full_table.tsv {params.buscodir2} 
 				else
 					touch {params.buscodir2}/full_table.tsv
 				fi
 			fi
             touch {output.completed}
-			python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {params.circgenome} -o {output.summary} 
+			if [ -s {pwd}/Anaplasmataceae.finalassembly.fa ] ; then
+				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/Anaplasmataceae.finalassembly.fa -o {output.summary}
+			elif [ -s {pwd}/Anaplasmataceae.ctgs.fa ] ; then
+				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/Anaplasmataceae.ctgs.fa -o {output.summary}
+			else
+				touch {output.summary} 
+			fi
             """
 
 rule WolbachiaQuality:
@@ -327,7 +333,10 @@ rule Supergroup:
 		if [ -s {input.fasta16SLoci} ]; then
 			python {scriptdir}/WolbachiaSupergroup.py -t {input.treefile} -c {input.fasta16SLoci} -b {params.binname} -s {host} -o {output.supergroup_name} -sts {stsfile} -i {tolid} -na {ncbi_taxdir}/names.dmp -no {ncbi_taxdir}/nodes.dmp -ta {input.taxfile}
 			speciesname=` cat {output.supergroup_name} | cut -f1`
-			echo "species: "$speciesname >>  {outdir}/{params.binname}*/{params.binname}*.yaml
+			today="$(date +'%Y%m%d')"
+			if [ -s {outdir}/{params.binname}."$today"/{params.binname}.yaml ]; then
+				echo "species: "$speciesname >>  {outdir}/{params.binname}."$today"/{params.binname}.yaml
+			fi
 			#cp {output.supergroup_name} {outdir}/{params.binname}.speciesname.txt
 			#write code here to add novel name to file
 			cat {output.supergroup_name} >> {pwd_dir}/taxid.nr.txt
@@ -406,7 +415,7 @@ rule AnnotateRotate:
 		cp {output.circ_fa} {outdir}"/"{params.circname}"."$today
 		gzip {outdir}"/"{params.circname}"."$today"/"{params.circname}".fa"
 
-		sh cobiont_curation_request.sh {outdir}"/"{params.circname}"."$today"/"{params.circname}".yaml" {email}
+		sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"{params.circname}"."$today"/"{params.circname}".yaml" {email}
 		"""
 
 def aggregate_circs(wildcards):
@@ -441,12 +450,13 @@ checkpoint Bin_Linear:
  		while read p
 		do
 			shortname=`echo $p | cut -d, -f1`
+			today="$(date +'%Y%m%d')"
 			if [ -f {pwd_dir}/$shortname.list ] && grep "Linear" {pwd_dir}/$shortname.list ; then
 				touch {output.superdir}/bin.$shortname.txt
-				sh cobiont_curation_request.sh {outdir}"/"{params.circname}"."$today"/"{params.circname}".yaml" {email}
+				sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"$shortname"."$today"/"$shortname".yaml" {email}
 			elif [ ! -f {pwd_dir}/$shortname.list ] && [ ! -f {pwd_dir}/$shortname.manifest.txt ] && [ -f {pwd_dir}/$shortname.metadata.txt ] ; then
 				touch {output.superdir}/bin.$shortname.txt
-				sh cobiont_curation_request.sh {outdir}"/"{params.circname}"."$today"/"{params.circname}".yaml" {email}
+				sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"$shortname"."$today"/"$shortname".yaml" {email}
 			fi
         done < {input.binlist}
 		"""

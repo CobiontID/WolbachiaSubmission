@@ -3,6 +3,7 @@ import argparse
 import configparser
 import os
 import sys
+import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", type=str, action='store', dest='input', metavar='INPUT',help='define taxid non-redundant file')
@@ -24,7 +25,7 @@ for record in f:
         data = json.load(f)
         if 'taxId' in data[0]:
             seen.append(idname)
-            #print(data[0]['taxId'])
+            print(data[0]['taxId'])
         else:
             print('NO RECORD YET FOR '+idname)
         #os.system('rm sample.json')
@@ -32,8 +33,9 @@ for record in f:
         print('NO RECORD YET FOR '+idname)
     cmd='rm '+idname_conv1+'.json'
     os.system(cmd)
+f.close()
 
-
+f =open(results.input,'r')
 o=open(results.output,'a')
 for record in f:
     record=record.strip()
