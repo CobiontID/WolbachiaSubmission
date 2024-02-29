@@ -9,11 +9,17 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-gff", type=str, action='store', dest='gff',help='define gff file')
 parser.add_argument("-fa", type=str, action='store', dest='fa',help='define fasta file')
 parser.add_argument("-o", type=str, action='store', dest='outfile',help='define output file name')
+parser.add_argument("-f", type=str, action='store', dest='fam',help='define family')
 parser.add_argument('--version', action='version', version='%(prog)s 1.0')
 args = parser.parse_args()
 
 species=args.outfile.split('/')[-1].split('.fa')[0]
 fastafile = args.fa
+
+if args.fam == 'Anaplasmataceae':
+    genename='hemE'
+else:
+    genename='dnaA'
 
 seqname=""
 seqlen=0
@@ -34,7 +40,7 @@ for record in l:
         stop=record.split('\t')[4]
         ctg=record.split('\t')[0]
         strand=record.split('\t')[6]
-        if 'hemE' in record:
+        if genename in record or genename+'_1;' in record:
             print(start+'\t'+stop+'\t'+strand)
             if strand == '+':
                 n=open(species+'.HemE.end.bed','w')
