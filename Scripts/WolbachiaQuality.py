@@ -27,7 +27,7 @@ l.close()
 
 requirements={}
 requirements['Anaplasmataceae']={}
-requirements['Anaplasmataceae']['buscoscore']=97
+requirements['Anaplasmataceae']['buscoscore']=96
 requirements['Anaplasmataceae']['minlen']=700000
 requirements['Anaplasmataceae']['maxlen']=2400000
 
@@ -35,6 +35,51 @@ requirements['Spiroplasmataceae']={}
 requirements['Spiroplasmataceae']['buscoscore']=60
 requirements['Spiroplasmataceae']['minlen']=700000
 requirements['Spiroplasmataceae']['maxlen']=2400000
+
+requirements['Amoebophilaceae']={}
+requirements['Amoebophilaceae']['buscoscore']=35
+requirements['Amoebophilaceae']['minlen']=700000
+requirements['Amoebophilaceae']['maxlen']=1500000
+
+requirements['Coxiellaceae']={}
+requirements['Coxiellaceae']['buscoscore']=80
+requirements['Coxiellaceae']['minlen']=1200000
+requirements['Coxiellaceae']['maxlen']=2000000
+
+requirements['Morganellaceae']={}
+requirements['Morganellaceae']['buscoscore']=80
+requirements['Morganellaceae']['minlen']=700000
+requirements['Morganellaceae']['maxlen']=5000000
+
+requirements['Midichloriaceae']={}
+requirements['Midichloriaceae']['buscoscore']=90
+requirements['Midichloriaceae']['minlen']=700000
+requirements['Midichloriaceae']['maxlen']=2000000
+
+requirements['Flavobacteriales']={}
+requirements['Flavobacteriales']['buscoscore']=15
+requirements['Flavobacteriales']['minlen']=100000
+requirements['Flavobacteriales']['maxlen']=500000
+
+requirements['Betaproteobacteria']={}
+requirements['Betaproteobacteria']['buscoscore']=2
+requirements['Betaproteobacteria']['minlen']=100000
+requirements['Betaproteobacteria']['maxlen']=300000
+
+requirements['Oxalobacteraceae']={}
+requirements['Oxalobacteraceae']['buscoscore']=20
+requirements['Oxalobacteraceae']['minlen']=100000
+requirements['Oxalobacteraceae']['maxlen']=500000
+
+requirements['Erwiniaceae']={}
+requirements['Erwiniaceae']['buscoscore']=50
+requirements['Erwiniaceae']['minlen']=300000
+requirements['Erwiniaceae']['maxlen']=800000
+
+requirements['Halomonadaceae']={}
+requirements['Halomonadaceae']['buscoscore']=5
+requirements['Halomonadaceae']['minlen']=200000
+requirements['Halomonadaceae']['maxlen']=500000
 
 binlistfile=open(results.binlist,'w')
 
@@ -487,12 +532,12 @@ elif (totalfound2/total_busco2 >0.97 and round(totalfound2/total_busco2)==comple
 else:
     binlistfile.write(results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1\n')
     fafile=dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa'
-    orig_fafile=results.dir2+'/'+genus+'/'+genus+'.finalassembly.fa'
+    orig_fafile=results.dir2+'/'+family+'/'+family+'.finalassembly.fa'
     if os.path.getsize(orig_fafile):
         cmd="cp "+orig_fafile+" "+fafile
         os.system(cmd)
-    elif os.path.getsize(results.dir2+'/'+genus+'/'+genus+'.ctgs.fa'):
-        k=open(results.dir2+'/'+genus+'/'+genus+'.ctgs.fa','r')
+    elif os.path.getsize(results.dir2+'/'+family+'/'+family+'.ctgs.fa'):
+        k=open(results.dir2+'/'+family+'/'+family+'.ctgs.fa','r')
         o=open(fafile,'w')
         for line in k:
             line=line.strip

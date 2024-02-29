@@ -109,11 +109,38 @@ print(ordername)
 
 multiple_host=False
 orders_present=[]
-matches=['Arthropoda', 'Nematoda']
+
+matches={}
+matches['Wolbachia'] = ['Arthropoda', 'Nematoda']
+matches=['Spiroplasma'] = ['Arthropoda']
+matches=['Cardinium'] = ['Arthropoda']
+matches=['Rickettsiella'] = ['Arthropoda']
+matches=['Arsenophonus'] = ['Arthropoda']
+matches=['Lariskella'] = ['Arthropoda']
+matches=['Mesenet'] = ['Arthropoda']
+#matches=['Hepanticola'] = ['Arthropoda']
+#matches=['Rickettsia'] = ['Arthropoda']
+
+matches=['Tremblaya'] = ['Pseudococcidae']  
+matches=['Buchnera'] = ['Aphididae'] 
+#matches=['Fukatsuia'] = ['Aphididae']
+#matches=['Regiella'] = ['Aphididae']
+#matches=['Hamiltonella'] = ['Aphididae']
+#matches=['Serratia'] = ['Aphididae']
+matches=['Sulcia'] = ['Auchenorrhyncha']    
+#matches=['Hodgkinia'] = ['Auchenorrhyncha']
+#matches=['Baumannia'] = ['Auchenorrhyncha']
+matches=['Zinderia'] = ['Auchenorrhyncha']
+matches=['Carsonella'] = ['Psylloidea']
+matches=['Portiera'] = ['Aleyrodidae']
+#matches=['Nardonella'] = ['Curculionidae']
+#matches=['Walczuchella'] = ['Monophlebidae']
+#matches=['Uzinura'] = ['Diaspididae']
+
 l=open(results.tax,'r')
 for line in l:
     line=line.strip()
-    if any([x in line for x in matches]) and ordername not in line:
+    if any([x in line for x in matches[genus]]) and ordername not in line:
         lastpart=line.split(';')[-2]
         if lastpart in namestax:
             lastparttax=namestax[lastpart]
@@ -146,11 +173,36 @@ for line in k:
 k.close()
 
 o=open(results.out,'w')
-if genus == 'Spiroplasma':
+if genus in ['Spiroplasma','Cardinium','Rickettsiella','Arsenophonus']:
     if multiple_host == False:
-        o.write('Spiroplasma endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+        o.write(genus+' endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
     else:
-        o.write('Spiroplasma sp. (group '+supergroup_name+') '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+        o.write(genus+' sp.\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+elif genus in ['Lariskella','Mesenet','Tremblaya']:
+    if multiple_host == False:
+        o.write('Candidatus '+genus+' endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+    else:
+        o.write('Candidatus '+genus+' sp.\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+elif genus == 'Sulcia':
+    if multiple_host == False:
+        o.write('Candidatus Karelsulcia muelleri ('+results.host.replace("_"," ")+')\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+    else:
+        o.write('Candidatus Karelsulcia  muelleri\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')       
+elif genus == 'Buchnera':
+    if multiple_host == False:
+        o.write('Buchnera aphidicola ('+results.host.replace("_"," ")+')\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+    else:
+        o.write('Buchnera aphidicola\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n') 
+elif genus == 'Portiera':
+    if multiple_host == False:
+        o.write('Portiera aleyrodidarum endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+    else:
+        o.write('Portiera aleyrodidarum\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n') 
+elif genus == 'Carsonella':
+    if multiple_host == False:
+        o.write('Candidatus Carsonella ruddii ('+results.host.replace("_"," ")+')\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+    else:
+        o.write('Candidatus Carsonella ruddii\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
 elif genus == 'Wolbachia':
     ctgs={}
     m =open(results.ctg,'r')

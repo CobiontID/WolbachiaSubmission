@@ -18,8 +18,13 @@ fastafile = args.fa
 
 if args.fam == 'Anaplasmataceae':
     genename='hemE'
+elif args.fam in ['Flavobacteriales','Betaproteobacteria','Erwiniaceae','Halomonadaceae']:
+    genename='dnaE'
 else:
     genename='dnaA'
+
+#double-check dnaE for Tremblaya, Buchnera, Sulcia, Carsonella, Portiera
+#Fukatsuia, Uzinura and Walczuchella
 
 seqname=""
 seqlen=0

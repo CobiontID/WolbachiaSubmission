@@ -40,11 +40,57 @@ rule CheckPresence:
 		wolpresence = expand("{pwd_directory}/symbiont_presence.txt", pwd_directory=config["pwd_directory"])
 	shell:
 			"""
-			if grep -q Wolbachia {input.taxfile} && [ -d {pwd} ]; then
+			if grep -q 'Wolbachia;' {input.taxfile}; then
 				echo "Wolbachia,Anaplasmataceae" >> {output.wolpresence}
-			elif grep -q Spiroplasma {input.taxfile} && [ -d {pwd} ]; then
+			fi
+
+			if grep -q 'Mesenet;' {input.taxfile}; then
+				echo "Mesenet,Anaplasmataceae" >> {output.wolpresence}
+			fi
+
+			if grep -q 'Spiroplasma;' {input.taxfile}; then
 				echo "Spiroplasma,Spiroplasmataceae" >> {output.wolpresence}
 			fi
+
+			if grep -q 'Cardinium;' {input.taxfile}; then
+				echo "Cardinium,Amoebophilaceae" >> {output.wolpresence}
+			fi
+
+			if grep -q 'Rickettsiella;' {input.taxfile}; then
+				echo "Cardinium,Coxiellaceae" >> {output.wolpresence}
+			fi	
+
+			if grep -q 'Arsenophonus;' {input.taxfile}; then
+				echo "Arsenophonus,Morganellaceae" >> {output.wolpresence}
+			fi
+
+			if grep -q 'Lariskella;' {input.taxfile}; then
+				echo "Lariskella,Midichloriaceae" >> {output.wolpresence}
+			fi
+
+			if grep -q 'Sulcia;' {input.taxfile}; then
+				echo "Sulcia,Flavobacteriales" >> {output.wolpresence}
+			fi
+
+			if grep -q 'Tremblaya;' {input.taxfile}; then
+				echo "Tremblaya,Betaproteobacteria" >> {output.wolpresence}
+			fi	
+
+			if grep -q 'Zinderia;' {input.taxfile}; then
+				echo "Zinderia,Oxalobacteraceae" >> {output.wolpresence}
+			fi	
+
+			if grep -q 'Buchnera;' {input.taxfile}; then
+				echo "Buchnera,Erwiniaceae" >> {output.wolpresence}
+			fi	
+
+			if grep -q 'Portiera;' {input.taxfile}; then
+				echo "Portiera,Halomonadaceae" >> {output.wolpresence}
+			fi	
+
+			if grep -q 'Carsonella;' {input.taxfile}; then
+				echo "Carsonella,Halomonadaceae" >> {output.wolpresence}
+			fi																	
 			"""
 
 checkpoint CheckPresenceCobionts:
