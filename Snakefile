@@ -23,28 +23,51 @@ email = config["email"]
 
 rule all:
 	input:
+		expand('{pwd_dir}/symbiont_presence.txt', pwd_dir=config["pwd_directory"]),
 		expand('{pwd_dir}/assembly_done.txt', pwd_dir=config["pwd_directory"]),
-		expand('{pwd_dir}/buscoAssembly/completeness_per_contig.txt', pwd_dir=config["pwd_directory"]),
+		expand('{pwd_dir}/buscoAssembly.done.txt', pwd_dir=config["pwd_directory"]),
+		expand('{pwd_dir}/busco.done.txt', pwd_dir=config["pwd_directory"]),
 		expand('{pwd_dir}/bins_done.txt', pwd_dir=config["pwd_directory"]),
-		expand('{pwd_dir}/bins_SSU_done.txt', pwd_dir=config["pwd_directory"]),
-		expand('{pwd_dir}/circular_done.txt', pwd_dir=config["pwd_directory"]),
-		expand('{pwd_dir}/linear_done.txt', pwd_dir=config["pwd_directory"]),
-		expand('{pwd_dir}/mags_done.txt', pwd_dir=config["pwd_directory"]),
-		expand('{pwd_dir}/Wolbachia.done.txt', pwd_dir=config["pwd_directory"])
+		expand('{pwd_dir}/total.done.txt', pwd_dir=config["pwd_directory"])
 
-
-rule CheckPresenceWolbachia:
+rule CheckPresence:
 	"""
-	check if this sample contains Wolbachia
+	check if this sample contains Wolbachia or Spiroplasma
 	"""
 	input:
 		taxfile = expand("{tax}", tax=config["taxfile"])
 	output:
-		wolpresence = "{pwd_directory}/Wol_presence.txt"
+		wolpresence = expand("{pwd_directory}/symbiont_presence.txt", pwd_directory=config["pwd_directory"])
 	shell:
 			"""
 			if grep -q Wolbachia {input.taxfile} && [ -d {pwd} ]; then
-				touch {output.wolpresence}
+				echo "Wolbachia,Anaplasmataceae" >> {output.wolpresence}
+			elif grep -q Spiroplasma {input.taxfile} && [ -d {pwd} ]; then
+				echo "Spiroplasma,Spiroplasmataceae" >> {output.wolpresence}
+			fi
+			"""
+
+checkpoint CheckPresenceCobionts:
+	"""
+	check if this sample contains Wolbachia or Spiroplasma
+	"""
+	input:
+		wolpresence = expand("{pwd_directory}/symbiont_presence.txt", pwd_directory=config["pwd_directory"])
+	output:
+		famdir = directory(expand("{pwd_directory}/families/", pwd_directory=config["pwd_directory"])),
+	shell:
+			"""
+			if [ ! -d {output.famdir} ]; then
+				mkdir {output.famdir}
+			fi
+
+			if [ -s {input.wolpresence} ]; then
+				while read p
+            	do
+            		shortname=`echo $p | cut -d, -f1`
+					family=`echo $p | cut -d, -f2`       
+                	echo $p > {output.famdir}/genus.$family.txt
+            	done < {input.wolpresence}
 			fi
 			"""
 
@@ -53,59 +76,78 @@ rule RunHifiasm:
 	check if hifiasm was already run, if not re-try
 	"""  
 	input:
-		wolpresence = "{pwd_directory}/Wol_presence.txt",
-		fasta_reads = expand("{pwd}/kraken.fa", pwd=config["workingdirectory"])
+		wolpresence = expand("{pwd_directory}/symbiont_presence.txt", pwd_directory=config["pwd_directory"]),
+		fasta_reads = expand("{pwd}", pwd=config["workingdirectory"]),
+		#generafiles = glob.glob("{pwd_directory}/families/genus.*.txt")
+		generafiles = "{pwd_directory}/families/genus.{family}.txt"
 	params:
-		assemblyprefix = "{pwd_directory}/hifiasm/hifiasm",
-		dirname = directory(expand("{pwd}/hifiasm",pwd=config["workingdirectory"])),
-		gfa2 = expand("{pwd}/hifiasm/hifiasm.p_ctg.noseq.gfa",pwd=config["workingdirectory"])
+		assemblyprefix = "{pwd_directory}/{family}/hifiasm/hifiasm",
+		dirname = directory(expand("{pwd}",pwd=config["workingdirectory"])),
+		fam = "{family}"
 	output:
-		completed = "{pwd_directory}/assembly_done.txt",
-		dirname2 = directory("{pwd_directory}/hifiasm"),
-		gfa = "{pwd_directory}/hifiasm/hifiasm.p_ctg.gfa",
-		fasta = "{pwd_directory}/hifiasm/hifiasm.p_ctg.fasta",
-		fai = "{pwd_directory}/hifiasm/hifiasm.p_ctg.fasta.fai"
+		completed = "{pwd_directory}/{family}.assembly_done.txt",
+		dirname2 = directory("{pwd_directory}/{family}/hifiasm"),
+		gfa = "{pwd_directory}/{family}/hifiasm/hifiasm.p_ctg.gfa",
+		fasta = "{pwd_directory}/{family}/hifiasm/hifiasm.p_ctg.fasta",
+		fai = "{pwd_directory}/{family}/hifiasm/hifiasm.p_ctg.fasta.fai"
 	threads: 10
 	conda: "envs/hifiasm_seqtk.yaml"
 	shell:
             """
 			if [ ! -d {output.dirname2} ]; then
 				mkdir {output.dirname2}
-				cp {input.fasta_reads} {pwd_dir}/hifiasm/reads.fa
+				cp {input.fasta_reads}/{params.fam}/kraken.fa {pwd_dir}/{params.fam}/hifiasm/reads.fa
 			fi
-            if [ -s {input.fasta_reads} ] && [ ! -s {params.gfa2} ] ; then
-				echo {input.fasta_reads}
-				linecount=$(grep -c '>' < {input.fasta_reads})
+            if [ -s {input.fasta_reads}/{params.fam}/kraken.fa ] && [ ! -s {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.noseq.gfa ] ; then
+				echo {input.fasta_reads}/{params.fam}/kraken.fa
+				echo {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.noseq.gfa
+				linecount=$(grep -c '>' < {input.fasta_reads}/{params.fam}/kraken.fa)
 				if [ $linecount -ge 50000 ]; then
-					seqtk sample {input.fasta_reads} 50000 > {pwd_dir}/hifiasm/reads.fa
+					seqtk sample {input.fasta_reads}/{params.fam}/kraken.fa 50000 > {pwd_dir}/{params.fam}/hifiasm/reads.fa
 				fi
-				hifiasm -o {params.assemblyprefix} -t {threads} {pwd_dir}/hifiasm/reads.fa -D 10 -l 1 -s 0.999 || true
-				mv {pwd_dir}/hifiasm/hifiasm.bp.p_ctg.gfa  {output.gfa}
+				hifiasm -o {params.assemblyprefix} -t {threads} {pwd_dir}/{params.fam}/hifiasm/reads.fa -D 10 -l 1 -s 0.999 || true
+				mv {pwd_dir}/{params.fam}/hifiasm/hifiasm.bp.p_ctg.gfa  {output.gfa}
 				awk '/^S/{{print ">"$2"\\n"$3}}' {output.gfa} | fold > {output.fasta} || true
 				faidx {output.fasta}
 			else
-				cp {params.dirname}/hifiasm.p_ctg.gfa {output.gfa} 
-				cp {params.dirname}/hifiasm.p_ctg.fasta {output.fasta} 
-				cp {params.dirname}/hifiasm.p_ctg.fasta.fai {output.fai}
+				cp {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.gfa {output.gfa} 
+				cp {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.fasta {output.fasta} 
+				cp {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.fasta.fai {output.fai}
 			fi
 			touch {output.completed}
 			"""
+
+def aggregate_asms(wildcards):
+	checkpoint_output=checkpoints.CheckPresenceCobionts.get(**wildcards).output[0]
+	return expand(os.path.join("{pwd_dir}/{family}.assembly_done.txt"), pwd_dir=config["pwd_directory"],family=glob_wildcards(os.path.join(checkpoint_output, "genus.{family}.txt")).family )
+
+rule concatenate_asms:
+	input:
+		aggregate_asms
+	output:
+		"{pwd_directory}/assembly_done.txt"
+	shell:
+		"""
+		touch {output}
+		"""
 
 rule RunBuscoAssembly:
     """
 	Detect number of BUSCO genes per contig
 	"""
 	input:
-		hifiasm_done = "{pwd_directory}/assembly_done.txt",
-		circgenome = "{pwd_directory}/hifiasm/hifiasm.p_ctg.fasta",
+		hifiasm_done = "{pwd_directory}/{family}.assembly_done.txt",
+		circgenome = "{pwd_directory}/{family}/hifiasm/hifiasm.p_ctg.fasta",
+		generafiles = "{pwd_directory}/families/genus.{family}.txt"
 	params:
-		buscodir = directory(expand("{pwd}/buscoAssembly",pwd=config["workingdirectory"])),
-		buscodir2 = directory("{pwd_directory}/buscoAssembly"),
-		buscodbs = "{pwd_directory}/info_dbs_assembly.txt",
-		buscoini = "{pwd_directory}/config_busco_assembly.ini"
+		buscodir = directory(expand("{pwd}/",pwd=config["workingdirectory"])),
+		buscodir2 = "{pwd_directory}/{family}/buscoAssembly",
+		buscodbs = "{pwd_directory}/{family}/info_dbs_assembly.txt",
+		buscoini = "{pwd_directory}/{family}/config_busco_assembly.ini",
+		fam = "{family}"
 	output:
-		completed = "{pwd_directory}/buscoAssembly.done.txt",
-		summary = "{pwd_directory}/buscoAssembly/completeness_per_contig.txt"
+		completed = "{pwd_directory}/{family}.buscoAssembly.done.txt",
+		summary = "{pwd_directory}/{family}/buscoAssembly/completeness_per_contig.txt"
 	conda: "envs/busco.yaml"
 	threads: 10
 	shell:
@@ -114,11 +156,11 @@ rule RunBuscoAssembly:
 				mkdir {params.buscodir2}
 			fi
 
-			if [ -f {params.buscodir}/busco/run*/full_table.tsv ] || [ -f {params.buscodir}/full_table.tsv ]; then
-				if [ -f {params.buscodir}/full_table.tsv ]; then
-					cp {params.buscodir}/full_table.tsv {params.buscodir2}
+			if [ -f {params.buscodir}/{params.fam}/buscoAssembly/busco/run*/full_table.tsv ] || [ -f {params.buscodir}/{params.fam}/buscoAssembly/full_table.tsv ]; then
+				if [ -f {params.buscodir}/{params.fam}/buscoAssembly/full_table.tsv ]; then
+					cp {params.buscodir}/{params.fam}/buscoAssembly/full_table.tsv {params.buscodir2}
 				else
-					cp {params.buscodir}/busco/run*/full_table.tsv {params.buscodir2}
+					cp {params.buscodir}/{params.fam}/buscoAssembly/busco/run*/full_table.tsv {params.buscodir2}
 				fi
 			else
 				if [ -s {input.circgenome} ] ; then
@@ -134,21 +176,38 @@ rule RunBuscoAssembly:
 			python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {input.circgenome} -o {output.summary} 
             """
 
+def aggregate_buscos(wildcards):
+	checkpoint_output=checkpoints.CheckPresenceCobionts.get(**wildcards).output[0]
+	return expand(os.path.join("{pwd_dir}/{family}.buscoAssembly.done.txt"), pwd_dir=config["pwd_directory"],family=glob_wildcards(os.path.join(checkpoint_output, "genus.{family}.txt")).family )
+
+rule concatenate_buscos:
+	input:
+		aggregate_buscos
+	output:
+		"{pwd_directory}/buscoAssembly.done.txt"
+	shell:
+		"""
+		touch {output}
+		"""
+
 rule RunBusco:
     """
 	Detect number of BUSCO genes per contig
 	"""
 	input:
-		hifiasm_done = "{pwd_directory}/assembly_done.txt",
+		hifiasm_done = "{pwd_directory}/{family}.assembly_done.txt",
+		busco_done = "{pwd_directory}/{family}.buscoAssembly.done.txt",
+		generafiles = "{pwd_directory}/families/genus.{family}.txt"
 	params:
-		circgenome =  expand("",pwd=config["workingdirectory"]),
-		buscodir = directory(expand("{pwd}/busco",pwd=config["workingdirectory"])),
-		buscodir2 = directory("{pwd_directory}/busco"),
-		buscodbs = "{pwd_directory}/info_dbs_assembly.txt",
-		buscoini = "{pwd_directory}/config_busco.ini",
+		circgenome =  "{pwd_directory}/{family}/hifiasm/hifiasm.p_ctg.fasta",
+		buscodir = directory(expand("{pwd}",pwd=config["workingdirectory"])),
+		buscodir2 = directory("{pwd_directory}/{family}/busco"),
+		buscodbs = "{pwd_directory}/{family}/info_dbs_assembly.txt",
+		buscoini = "{pwd_directory}/{family}/config_busco.ini",
+		fam = "{family}"
 	output:
-		completed = "{pwd_directory}/busco.done.txt",
-		summary = "{pwd_directory}/busco/completeness_per_contig.txt"
+		completed = "{pwd_directory}/{family}.busco.done.txt",
+		summary = "{pwd_directory}/{family}/busco/completeness_per_contig.txt"
 	conda: "envs/busco.yaml"
 	threads: 10
 	shell:
@@ -157,16 +216,16 @@ rule RunBusco:
 				mkdir {params.buscodir2}
 			fi
 
-			if [ -f {params.buscodir}/busco/run*/full_table.tsv ] || [ -f {params.buscodir}/full_table.tsv ]; then
-				if [ -f {params.buscodir}/full_table.tsv ]; then
-					cp {params.buscodir}/full_table.tsv {params.buscodir2}
+			if [ -f {params.buscodir}/{params.fam}/busco/busco/run*/full_table.tsv ] || [ -f {params.buscodir}/{params.fam}/busco/full_table.tsv ]; then
+				if [ -f {params.buscodir}/{params.fam}/busco/full_table.tsv ]; then
+					cp {params.buscodir}/{params.fam}/busco/full_table.tsv {params.buscodir2}
 				else
-					cp {params.buscodir}/busco/run*/full_table.tsv {params.buscodir2}
+					cp {params.buscodir}/{params.fam}/busco/busco/run*/full_table.tsv {params.buscodir2}
 				fi
 			else
-				if [ -s {pwd}/Anaplasmataceae.finalassembly.fa ] ; then
+				if [ -s {pwd}/{params.fam}.finalassembly.fa ] ; then
 					busco --list-datasets > {params.buscodbs}
-                	python {scriptdir}/BuscoConfig.py -f {pwd}/Anaplasmataceae.finalassembly.fa -d {params.buscodir2} -dl busco_data/ -c {threads} -db {params.buscodbs} -o {params.buscoini}
+                	python {scriptdir}/BuscoConfig.py -f {pwd}/{params.fam}.finalassembly.fa -d {params.buscodir2} -dl busco_data/ -c {threads} -db {params.buscodbs} -o {params.buscoini}
                 	busco --config {params.buscoini} -f || true
 					mv {params.buscodir2}/busco/run*/full_table.tsv {params.buscodir2} 
 				else
@@ -174,31 +233,46 @@ rule RunBusco:
 				fi
 			fi
             touch {output.completed}
-			if [ -s {pwd}/Anaplasmataceae.finalassembly.fa ] ; then
-				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/Anaplasmataceae.finalassembly.fa -o {output.summary}
-			elif [ -s {pwd}/Anaplasmataceae.ctgs.fa ] ; then
-				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/Anaplasmataceae.ctgs.fa -o {output.summary}
+			if [ -s {pwd}/{params.fam}/{params.fam}.finalassembly.fa ] ; then
+				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/{params.fam}/{params.fam}.finalassembly.fa -o {output.summary}
+			elif [ -s {pwd}/{params.fam}/{params.fam}.ctgs.fa ] ; then
+				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/{params.fam}/{params.fam}.ctgs.fa -o {output.summary}
 			else
 				touch {output.summary} 
 			fi
             """
+
+def aggregate_buscos2(wildcards):
+	checkpoint_output=checkpoints.CheckPresenceCobionts.get(**wildcards).output[0]
+	return expand(os.path.join("{pwd_dir}/{family}.busco.done.txt"), pwd_dir=config["pwd_directory"],family=glob_wildcards(os.path.join(checkpoint_output, "genus.{family}.txt")).family )
+
+rule concatenate_buscos2:
+	input:
+		aggregate_buscos2
+	output:
+		"{pwd_directory}/busco.done.txt"
+	shell:
+		"""
+		touch {output}
+		"""
 
 rule WolbachiaQuality:
 	"""
 	check quality of assemblies, create metadata file and chrom list file (if necessary). if quality not sufficient, create mag files
 	"""
 	input:
+		generafiles = "{pwd_directory}/families/genus.{family}.txt",
 		hifiasm_done = "{pwd_directory}/assembly_done.txt",
 		busco_asm_done = "{pwd_directory}/buscoAssembly.done.txt",
 		busco_done = "{pwd_directory}/busco.done.txt",
-		summary = "{pwd_directory}/buscoAssembly/completeness_per_contig.txt",
-		orig_dir = directory(expand("{pwd}/",pwd=config["workingdirectory"]))
+		summary = "{pwd_directory}/{family}/buscoAssembly/completeness_per_contig.txt",
+		orig_dir = expand("{pwd}",pwd=config["workingdirectory"])
 	output:
-		completed = "{pwd_directory}/bins_done.txt",
-		binlist = "{pwd_directory}/bin_list.txt"
+		completed = "{pwd_directory}/{family}.bins_done.txt",
+		binlist = "{pwd_directory}/{family}/bin_list.txt"
 	shell:
 		"""
-		python {scriptdir}/WolbachiaQuality.py -d {input.summary} -t {tolid} -l {output.binlist} -g {gfa} -d2 {input.orig_dir} -o {outdir}
+		python {scriptdir}/WolbachiaQuality.py -d {input.summary} -t {tolid} -l {output.binlist} -g {gfa} -d2 {input.orig_dir} -o {outdir} -f {input.generafiles}
 		touch {output.completed}
 		"""
 
@@ -207,10 +281,12 @@ checkpoint Bins:
 	Move all fasta bins to directory supergroup
 	"""
 	input:
-		bins_quality = "{pwd_directory}/bins_done.txt",
-		binlist = "{pwd_directory}/bin_list.txt"
+		bins_quality = "{pwd_directory}/{family}.bins_done.txt",
+		binlist = "{pwd_directory}/{family}/bin_list.txt"
+	params:
+		fam = "{family}"
 	output:
-		superdir = directory("{pwd_directory}/supergroup/")
+		superdir = directory("{pwd_directory}/{family}/supergroup/")
 	shell:
 		"""
 		if [ ! -d {output.superdir} ]; then
@@ -221,9 +297,25 @@ checkpoint Bins:
 			shortname=`echo $p | cut -d, -f1`
 			echo {output.superdir}/$shortname.fa
 			if [ ! -f {output.superdir}/bin.$shortname.fa ]; then
-				mv {pwd_dir}/$shortname.fa {output.superdir}/bin.$shortname.fa
+				mv {pwd_dir}/{params.fam}/$shortname.fa {output.superdir}/bin.$shortname.fa
 			fi
         done < {input.binlist}
+		"""
+
+def aggregate_bins(wildcards):
+	#checkpoint_output=checkpoints.Bins.get(**wildcards).output[0]
+	checkpoint_output=checkpoints.CheckPresenceCobionts.get(**wildcards).output[0]
+	#return expand(os.path.join(checkpoint_output, "{family}.bins_done.txt"), family=glob_wildcards(os.path.join(pwd_dir, "genus.{family}.txt")).family)
+	return expand(os.path.join("{pwd_dir}/{family}.bins_done.txt"), pwd_dir=config["pwd_directory"],family=glob_wildcards(os.path.join(checkpoint_output, "genus.{family}.txt")).family )
+
+rule concatenate_bins:
+	input:
+		aggregate_bins
+	output:
+		"{pwd_directory}/bins_done.txt"
+	shell:
+		"""
+		touch {output}
 		"""
 
 rule HMMscan_SSU:
@@ -231,10 +323,10 @@ rule HMMscan_SSU:
 	Run HMMscan with prokaryotic+viral HMM (RF00177+RF01959)
 	"""
 	input:
-		fasta = "{pwd_directory}/supergroup/bin.{bin}.fa"
+		fasta = "{pwd_directory}/{family}/supergroup/bin.{bin}.fa"
 	output:
-		domfile = "{pwd_directory}/supergroup/{bin}.ProkSSU.domout",
-		log = "{pwd_directory}/supergroup/{bin}.HMMscan.log"
+		domfile = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.domout",
+		log = "{pwd_directory}/{family}/supergroup/{bin}.HMMscan.log"
 	threads: 10
 	conda: "envs/hmmer.yaml"
 	shell:
@@ -251,11 +343,11 @@ rule Fetch16SLoci:
 	Get fasta sequences for detected reads with prokaryotic 16S signature and extract 16S locus
 	"""
 	input:
-		dom = "{pwd_directory}/supergroup/{bin}.ProkSSU.domout", 
-		fasta = "{pwd_directory}/supergroup/bin.{bin}.fa"
+		dom = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.domout", 
+		fasta = "{pwd_directory}/{family}/supergroup/bin.{bin}.fa"
 	output:
-		readsinfo = "{pwd_directory}/supergroup/{bin}.ProkSSU.readsinfo",
-		fasta16SLoci = "{pwd_directory}/supergroup/{bin}.ProkSSU.fa",
+		readsinfo = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.readsinfo",
+		fasta16SLoci = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.fa",
 	conda: "envs/cdhit.yaml"
 	shell:
 		"""
@@ -272,15 +364,17 @@ rule Build_SSU_Tree:
 	Add 16S to Wolbachia SSU alignment and build phylogenetic tree
 	"""
 	input:
-		fasta16SLoci = "{pwd_directory}/supergroup/{bin}.ProkSSU.fa"
+		fasta16SLoci = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.fa"
 	output:
-		aln16SLoci = "{pwd_directory}/supergroup/{bin}.ProkSSU.aln.fa",
-		treefile = "{pwd_directory}/supergroup/{bin}.ProkSSU.treefile"
+		aln16SLoci = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.aln.fa",
+		treefile = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.treefile"
+	params:
+		fam = "{family}"
 	conda: "envs/treebuild.yaml"
 	threads: 10
 	shell:
 		"""
-		if [ -s {input.fasta16SLoci} ]; then
+		if [ -s {input.fasta16SLoci} ] && [ {params.fam} = 'Anaplasmataceae' ]; then
 			mafft --add {input.fasta16SLoci} --reorder {SSUalnfile} > {output.aln16SLoci}
 			iqtree -s {output.aln16SLoci} -T {threads} -B 5000 -o Anaplasma_marginale_AF414871.1,Ehrlichia_canis_KJ513196.1
 			mv {output.aln16SLoci}.treefile {output.treefile}
@@ -294,7 +388,7 @@ rule DownloadNCBITaxonomy:
         Download current version of NCBI taxonomy
         """
         output:
-                donefile = temporary("{pwd_directory}/taxdownload.done.txt")
+                donefile = temporary("{pwd_dir}/taxdownload.done.txt")
         shell:
                 """
                 if [ ! -d {ncbi_taxdir} ]; then
@@ -319,19 +413,21 @@ rule Supergroup:
 	Link novel Wolbachia SSU to a supergroup
 	"""
 	input:
-		treefile = "{pwd_directory}/supergroup/{bin}.ProkSSU.treefile",
-		fasta16SLoci = "{pwd_directory}/supergroup/{bin}.ProkSSU.fa",
+		treefile = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.treefile",
+		fasta16SLoci = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.fa",
 		taxfile = expand("{tax}", tax=config["taxfile"]),
-		taxdone = "{pwd_directory}/taxdownload.done.txt"
+		taxdone = "{pwd_directory}/taxdownload.done.txt",
+		generafiles = "{pwd_directory}/families/genus.{family}.txt"
 	params:
-		binname = "{bin}"
+		binname = "{bin}",
+		fam = "{family}"
 	output:
-		supergroup_name =  "{pwd_directory}/supergroup/{bin}.Wol.SSU.supergroup.txt"
+		supergroup_name =  "{pwd_directory}/{family}/supergroup/{bin}.SSU.supergroup.txt"
 	conda: "envs/ete3.yaml"
 	shell:	
 		"""
-		if [ -s {input.fasta16SLoci} ]; then
-			python {scriptdir}/WolbachiaSupergroup.py -t {input.treefile} -c {input.fasta16SLoci} -b {params.binname} -s {host} -o {output.supergroup_name} -sts {stsfile} -i {tolid} -na {ncbi_taxdir}/names.dmp -no {ncbi_taxdir}/nodes.dmp -ta {input.taxfile}
+		if [ -s {input.fasta16SLoci} ] ; then
+			python {scriptdir}/WolbachiaSupergroup.py -t {input.treefile} -c {input.fasta16SLoci} -f {input.generafiles} -b {params.binname} -s {host} -o {output.supergroup_name} -sts {stsfile} -i {tolid} -na {ncbi_taxdir}/names.dmp -no {ncbi_taxdir}/nodes.dmp -ta {input.taxfile}
 			speciesname=` cat {output.supergroup_name} | cut -f1`
 			today="$(date +'%Y%m%d')"
 			if [ -s {outdir}/{params.binname}."$today"/{params.binname}.yaml ]; then
@@ -339,32 +435,38 @@ rule Supergroup:
 			fi
 			#cp {output.supergroup_name} {outdir}/{params.binname}.speciesname.txt
 			#write code here to add novel name to file
-			cat {output.supergroup_name} >> {pwd_dir}/taxid.nr.txt
+			cat {output.supergroup_name} >> "{pwd_dir}/{params.fam}/taxid.nr.txt"
 		else
-			touch {output.supergroup_name}
+			touch {output.supergroup_name} "{pwd_dir}/{params.fam}/taxid.nr.txt"
 		fi
 		"""
 
-def aggregate_bins(wildcards):
+def aggregate_supergroups(wildcards):
 	checkpoint_output=checkpoints.Bins.get(**wildcards).output[0]
-	return expand(os.path.join(checkpoint_output, "{bin}.Wol.SSU.supergroup.txt"), bin=glob_wildcards(os.path.join(checkpoint_output, 'bin.{bin}.fa')).bin)
+	#return expand("{workingdirectory}/{family}/supergroup/{bin}.SSU.supergroup.txt", workingdirectory=config["pwd_directory"], bin=glob_wildcards(os.path.join(checkpoint_output, 'bin.{bin}.fa')).bin, family=glob_wildcards(os.path.join(checkpoint_output2, "genus.{family}.txt")).family )
+	return expand(os.path.join(checkpoint_output, "{bin}.SSU.supergroup.txt"), bin=glob_wildcards(os.path.join(checkpoint_output, 'bin.{bin}.fa')).bin)
+	#return expand("{workingdirectory}/{family}/supergroup/{bin}.SSU.supergroup.txt", workingdirectory=config["pwd_directory"], bin=glob_wildcards(os.path.join(checkpoint_output, 'bin.{bin}.fa')).bin, family=glob_wildcards(os.path.join({workingdirectory}, "families/genus.{family}.txt")).family )
 
-rule concatenate_bins:
+
+checkpoint concatenate_supergroups:
 	input:
-		aggregate_bins
+		aggregate_supergroups
 	output:
-		"{pwd_directory}/bins_SSU_done.txt"
+		reqfile="{pwd_directory}/{family}.taxid_request.novel.txt",
+		donefile="{pwd_directory}/{family}/bins_SSU_done.txt"
+	params:
+		fam = "{family}"
 	shell:
 		"""
 		#write code here to submit email to ENA taxid request
-		cut -f1-5 {pwd_dir}/taxid.nr.txt | sort | uniq > {pwd_dir}/taxid_request.txt
+		cut -f1-5 {pwd_dir}/{params.fam}/taxid.nr.txt | sort | uniq > {pwd_dir}/{params.fam}/taxid_request.txt
 
 		#add script double-check it doesn't exist
-		python {scriptdir}/taxid_requests.py -i {pwd_dir}/taxid_request.txt -o {pwd_dir}/taxid_request.novel.txt
-		sh {scriptdir}/email_request_taxids.sh {pwd_dir}/taxid_request.novel.txt {email}
+		python {scriptdir}/taxid_requests.py -i {pwd_dir}/{params.fam}/taxid_request.txt -o {output.reqfile}
 
-		rm {pwd_dir}/taxid.nr.txt
-		touch {output}
+		rm {pwd_dir}/{params.fam}/taxid.nr.txt
+		sh {scriptdir}/email_request_taxids.sh {output.reqfile} {email}
+		touch {output.donefile}
 		"""
 
 checkpoint Bin_Circular:
@@ -372,11 +474,13 @@ checkpoint Bin_Circular:
 	Move all fasta bins to directory supergroup
 	"""
 	input:
-		binsdone = "{pwd_directory}/bins_SSU_done.txt",
-		bins_quality = "{pwd_directory}/bins_done.txt",
-		binlist = "{pwd_directory}/bin_list.txt"
+		binsdone = "{pwd_directory}/{family}/bins_SSU_done.txt",
+		bins_quality = "{pwd_directory}/{family}/bins_done.txt",
+		binlist = "{pwd_directory}/{family}/bin_list.txt"
 	output:
-		superdir = directory("{pwd_directory}/circular/")
+		superdir = directory("{pwd_directory}/{family}/circular/")
+	params:
+		fam = "{family}"
 	shell:
 		"""
 		if [ ! -d {output.superdir} ]; then
@@ -385,8 +489,8 @@ checkpoint Bin_Circular:
  		while read p
 		do
 			shortname=`echo $p | cut -d, -f1`
-			echo {pwd_dir}/$shortname.list
-			if [ -f {pwd_dir}/$shortname.list ] && grep "Circular" {pwd_dir}/$shortname.list ; then
+			echo {pwd_dir}/{params.fam}/$shortname.list
+			if [ -f {pwd_dir}/{params.fam}/$shortname.list ] && grep "Circular" {pwd_dir}/{params.fam}/$shortname.list ; then
 				echo {output.superdir}/bin.$shortname.fa
 				touch {output.superdir}/bin.$shortname.txt
 			fi
@@ -398,18 +502,19 @@ rule AnnotateRotate:
 	Annotate circular genomes to rotate at HemE
 	"""
 	input:
-		fasta = "{pwd_directory}/supergroup/bin.{circ}.fa",
-		binname= "{pwd_directory}/circular/bin.{circ}.txt"
+		fasta = "{pwd_directory}/{family}/supergroup/bin.{circ}.fa",
+		binname= "{pwd_directory}/{family}/circular/bin.{circ}.txt"
 	output:
-		circ_fa = "{pwd_directory}/circular/{circ}.fa"
+		circ_fa = "{pwd_directory}/{family}/circular/{circ}.fa"
 	params:
-		circname = "{circ}"
+		circname = "{circ}",
+		fam = "{family}"
 	threads: 10
 	conda: "envs/prokka.yaml"
 	shell:
 		"""
-		prokka --cpus {threads} --outdir {pwd_dir}/circular/{params.circname}.prokka --prefix {params.circname} {input.fasta}
-		python {scriptdir}/RotateRevComp.py -gff {pwd_dir}/circular/{params.circname}.prokka/{params.circname}.gff -fa {input.fasta} -o {output.circ_fa}
+		prokka --cpus {threads} --outdir {pwd_dir}/{params.fam}/circular/{params.circname}.prokka --prefix {params.circname} {input.fasta}
+		python {scriptdir}/RotateRevComp.py -gff {pwd_dir}/{params.fam}/circular/{params.circname}.prokka/{params.circname}.gff -fa {input.fasta} -o {output.circ_fa} -f {params.fam}
 		today="$(date +'%Y%m%d')"
 		rm {outdir}"/"{params.circname}"."$today"/"{params.circname}".fa.gz"
 		cp {output.circ_fa} {outdir}"/"{params.circname}"."$today
@@ -420,13 +525,14 @@ rule AnnotateRotate:
 
 def aggregate_circs(wildcards):
 	checkpoint_output=checkpoints.Bin_Circular.get(**wildcards).output[0]
-	return expand(os.path.join(checkpoint_output, "{circ}.fa"), circ=glob_wildcards(os.path.join(checkpoint_output, 'bin.{circ}.txt')).circ)
+	return expand(os.path.join(checkpoint_output, "{bin}.fa"), bin=glob_wildcards(os.path.join(checkpoint_output, 'bin.{bin}.txt')).bin)
+	#return expand(os.path.join(checkpoint_output, "{circ}.fa"), circ=glob_wildcards(os.path.join(checkpoint_output, 'bin.{circ}.txt')).circ)
 
 rule concatenate_circular:
 	input:
 		aggregate_circs
 	output:
-		"{pwd_directory}/circular_done.txt"
+		"{pwd_directory}/{family}/circular_done.txt"
 	shell:
 		"""
 		touch {output}
@@ -437,11 +543,13 @@ checkpoint Bin_Linear:
 	Move all fasta bins to directory supergroup
 	"""
 	input:
-		binsdone = "{pwd_directory}/bins_SSU_done.txt",
-		bins_quality = "{pwd_directory}/bins_done.txt",
-		binlist = "{pwd_directory}/bin_list.txt"
+		binsdone = "{pwd_directory}/{family}/bins_SSU_done.txt",
+		bins_quality = "{pwd_directory}/{family}/bins_done.txt",
+		binlist = "{pwd_directory}/{family}/bin_list.txt"
 	output:
-		superdir = directory("{pwd_directory}/linear/")
+		superdir = directory("{pwd_directory}/{family}/linear/")
+	params:
+		fam = "{family}"
 	shell:
 		"""
 		if [ ! -d {output.superdir} ]; then
@@ -451,10 +559,10 @@ checkpoint Bin_Linear:
 		do
 			shortname=`echo $p | cut -d, -f1`
 			today="$(date +'%Y%m%d')"
-			if [ -f {pwd_dir}/$shortname.list ] && grep "Linear" {pwd_dir}/$shortname.list ; then
+			if [ -f {pwd_dir}/{params.fam}/$shortname.list ] && grep "Linear" {pwd_dir}/{params.fam}/$shortname.list ; then
 				touch {output.superdir}/bin.$shortname.txt
 				sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"$shortname"."$today"/"$shortname".yaml" {email}
-			elif [ ! -f {pwd_dir}/$shortname.list ] && [ ! -f {pwd_dir}/$shortname.manifest.txt ] && [ -f {pwd_dir}/$shortname.metadata.txt ] ; then
+			elif [ ! -f {pwd_dir}/{params.fam}/$shortname.list ] && [ ! -f {pwd_dir}/{params.fam}/$shortname.manifest.txt ] && [ -f {pwd_dir}/{params.fam}/$shortname.metadata.txt ] ; then
 				touch {output.superdir}/bin.$shortname.txt
 				sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"$shortname"."$today"/"$shortname".yaml" {email}
 			fi
@@ -463,13 +571,14 @@ checkpoint Bin_Linear:
 
 def aggregate_lins(wildcards):
 	checkpoint_output=checkpoints.Bin_Linear.get(**wildcards).output[0]
+	#return expand("{workingdirectory}/{family}/linear/bin.{bin}.fa", workingdirectory=config["pwd_directory"], bin=glob_wildcards(os.path.join(checkpoint_output, 'bin.{bin}.fa')).bin, family=glob_wildcards(os.path.join({workingdirectory}, "families/genus.{family}.txt")).family )
 	return expand(os.path.join(checkpoint_output, "bin.{circ}.txt"), circ=glob_wildcards(os.path.join(checkpoint_output, 'bin.{circ}.txt')).circ)
 
 rule concatenate_linear:
 	input:
 		aggregate_lins
 	output:
-		"{pwd_directory}/linear_done.txt"
+		"{pwd_directory}/{family}/linear_done.txt"
 	shell:
 		"""
 		touch {output}
@@ -480,11 +589,13 @@ checkpoint Bin_Mags:
 	Move all fasta bins to directory supergroup
 	"""
 	input:
-		binsdone = "{pwd_directory}/bins_SSU_done.txt",
-		bins_quality = "{pwd_directory}/bins_done.txt",
-		binlist = "{pwd_directory}/bin_list.txt",
+		binsdone = "{pwd_directory}/{family}/bins_SSU_done.txt",
+		bins_quality = "{pwd_directory}/{family}/bins_done.txt",
+		binlist = "{pwd_directory}/{family}/bin_list.txt",
 	output:
-		superdir = directory("{pwd_directory}/mag/")
+		superdir = directory("{pwd_directory}/{family}/mag/")
+	params:
+		fam = "{family}"
 	shell:
 		"""
 		if [ ! -d {output.superdir} ]; then
@@ -493,10 +604,10 @@ checkpoint Bin_Mags:
  		while read p
 		do
 			shortname=`echo $p | cut -d, -f1`
-			if [ -f {pwd_dir}/$shortname.manifest.txt ] ; then
-				mv {pwd_dir}/$shortname.manifest.txt {output.superdir}
+			if [ -f {pwd_dir}/{params.fam}/$shortname.manifest.txt ] ; then
+				mv {pwd_dir}/{params.fam}/$shortname.manifest.txt {output.superdir}
 				#cp {output.superdir}/$shortname.manifest.txt {outdir}
-				#cp {pwd_dir}/supergroup/bin.$shortname.fa {outdir}/$shortname.mag.fa 
+				#cp {pwd_dir}/{params.fam}/supergroup/bin.$shortname.fa {outdir}/$shortname.mag.fa 
 			fi
         done < {input.binlist}
 		"""
@@ -504,12 +615,13 @@ checkpoint Bin_Mags:
 def aggregate_mags(wildcards):
 	checkpoint_output=checkpoints.Bin_Mags.get(**wildcards).output[0]
 	return expand(os.path.join(checkpoint_output, "{mag}.manifest.txt"), mag=glob_wildcards(os.path.join(checkpoint_output, "{mag}.manifest.txt")).mag)
+	#return expand("{workingdirectory}/{family}/mag/{bin}.manifest.txt", workingdirectory=config["pwd_directory"], bin=glob_wildcards(os.path.join(checkpoint_output, 'bin.{bin}.fa')).bin, family=glob_wildcards(os.path.join({workingdirectory}, "families/genus.{family}.txt")).family )
 
 rule concatenate_mags:
 	input:
 		aggregate_mags
 	output:
-		"{pwd_directory}/mags_done.txt"
+		"{pwd_directory}/{family}/mags_done.txt"
 	shell:
 		"""
 		touch {output}
@@ -517,17 +629,30 @@ rule concatenate_mags:
 
 rule clean_up_files:
 	input:
-		mag="{pwd_directory}/mags_done.txt",
-		lin="{pwd_directory}/linear_done.txt",
-		circ="{pwd_directory}/circular_done.txt",
-		superg="{pwd_directory}/bins_SSU_done.txt",
-		bins="{pwd_directory}/bins_done.txt",
-		asm="{pwd_directory}/assembly_done.txt",
-		busco="{pwd_directory}/buscoAssembly.done.txt"
+		mag="{pwd_directory}/{family}/mags_done.txt",
+		lin="{pwd_directory}/{family}/linear_done.txt",
+		circ="{pwd_directory}/{family}/circular_done.txt",
+		superg="{pwd_directory}/{family}/bins_SSU_done.txt"
 	output:
-		"{pwd_directory}/Wolbachia.done.txt"
+		"{pwd_directory}/{family}.total.done.txt"
 	shell:
 		"""
-		rm {input.mag} {input.lin} {input.circ} {input.superg} {input.bins} {input.busco} {input.asm}
+		rm {input.superg}
+		touch {output}
+		"""
+
+def aggregate_clean_by_fam(wildcards):
+	checkpoint_output=checkpoints.CheckPresenceCobionts.get(**wildcards).output[0]
+	return expand(os.path.join("{pwd_dir}/{family}.total.done.txt"), pwd_dir=config["pwd_directory"], family=glob_wildcards(os.path.join(checkpoint_output, "genus.{family}.txt")).family )
+
+rule concatenate_clean_total:
+	input:
+		aggregate_clean_by_fam
+	output:
+		"{pwd_directory}/total.done.txt"
+	shell:
+		"""
+		rm {pwd_dir}/bins_done.txt {pwd_dir}/assembly_done.txt {pwd_dir}/buscoAssembly.done.txt
+		rm {pwd_dir}/*done.txt {pwd_dir}/*/*done.txt
 		touch {output}
 		"""

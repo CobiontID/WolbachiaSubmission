@@ -12,8 +12,29 @@ parser.add_argument("-o", type=str, action='store', dest='out', metavar='INPUT',
 parser.add_argument("-t", type=str, action='store', dest='tolid', metavar='INPUT',help='define tolid')
 parser.add_argument("-l", type=str, action='store', dest='binlist', metavar='INPUT',help='define binlist')
 parser.add_argument("-g", type=str, action='store', dest='gfa', metavar='GFA',help='define gfa file')
+parser.add_argument("-f", type=str, action='store', dest='fam', metavar='FAM',help='define family')
 parser.add_argument('--version', action='version', version='%(prog)s 1.0')
 results = parser.parse_args()
+
+genus=""
+family=""
+l=open(results.fam,'r')
+for line in l:
+    line=line.strip()
+    genus=line.split(',')[0]
+    family=line.split(',')[1]
+l.close()
+
+requirements={}
+requirements['Anaplasmataceae']={}
+requirements['Anaplasmataceae']['buscoscore']=97
+requirements['Anaplasmataceae']['minlen']=700000
+requirements['Anaplasmataceae']['maxlen']=2400000
+
+requirements['Spiroplasmataceae']={}
+requirements['Spiroplasmataceae']['buscoscore']=60
+requirements['Spiroplasmataceae']['minlen']=700000
+requirements['Spiroplasmataceae']['maxlen']=2400000
 
 binlistfile=open(results.binlist,'w')
 
@@ -27,7 +48,7 @@ for rec in m:
         ctg=rec.split('\t')[0]
         totalfound+=int(rec.split('\t')[1])
         total_busco=int(rec.split('\t')[2])
-        if float(rec.split('\t')[3].split('%')[0]) > 97 and float(rec.split('\t')[5]) > 700000 and float(rec.split('\t')[5]) < 2400000:
+        if float(rec.split('\t')[3].split('%')[0]) > requirements[family]['buscoscore'] and float(rec.split('\t')[5]) > requirements[family]['minlen'] and float(rec.split('\t')[5]) < requirements[family]['maxlen']:
             complete+=1
 m.close()
 
@@ -42,7 +63,7 @@ for rec in k:
         ctgs_busco.append(ctg)
         totalfound2+=int(rec.split('\t')[1])
         total_busco2=int(rec.split('\t')[2])
-        if float(rec.split('\t')[3].split('%')[0]) > 97 and float(rec.split('\t')[5]) > 700000 and float(rec.split('\t')[5]) < 2400000:
+        if float(rec.split('\t')[3].split('%')[0]) > requirements[family]['buscoscore'] and float(rec.split('\t')[5]) > requirements[family]['minlen'] and float(rec.split('\t')[5]) < requirements[family]['maxlen']:
             complete2+=1
 k.close()
 print(str(totalfound2)+','+str(total_busco2)+','+str(complete2)+','+str(complete))
@@ -53,7 +74,7 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
     for record in m:
         record=record.strip()
         if not record.startswith('#'):
-            if float(record.split('\t')[3].split('%')[0]) > 97 and float(record.split('\t')[5]) > 700000 and float(record.split('\t')[5]) < 2400000:
+            if float(record.split('\t')[3].split('%')[0]) > requirements[family]['buscoscore'] and float(record.split('\t')[5]) > requirements[family]['minlen'] and float(record.split('\t')[5]) < requirements[family]['maxlen']:
                 print(record)
                 ctg=record.split('\t')[0]
                 if ctg.endswith('c'):
@@ -68,19 +89,19 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                     n.close()
                     #print(coverage)
                     today=datetime.today().strftime('%Y%m%d')
-                    outdir=results.out+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.'+today
+                    outdir=results.out+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.'+today
                     cmd="mkdir "+outdir
                     os.system(cmd)
-                    y=open(outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.yaml', 'w')
+                    y=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.yaml', 'w')
                     y.write('---'+'\n')
                     #y.write('species: '+cobiontname+'\n')
-                    y.write('specimen: '+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'\n')
+                    y.write('specimen: '+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'\n')
                     y.write('projects:'+'\n')
                     y.write('  - darwin'+'\n')
                     y.write('data_location: Sanger RW'+'\n')
-                    y.write('chromosome_list: '+outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.tsv'+'\n')
+                    y.write('chromosome_list: '+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.tsv'+'\n')
                     y.write('cobiont_status: cobiont'+'\n')
-                    y.write('primary: '+outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa.gz'+'\n')
+                    y.write('primary: '+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa.gz'+'\n')
                     y.write('jira_queue: DS'+'\n')
                     #y.write('biosample: '+biosample+'\n')
                     y.write('coverage: '+str(coverage)+'\n')
@@ -90,14 +111,14 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                     y.write('  - MarkerScan (v1.0)'+'\n')
                     y.write('  - hifiasm (v0.14)'+'\n')
                     y.close()
-                    lst=open(outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.tsv', 'w')
+                    lst=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.tsv', 'w')
                     lst.write(ctg+'\t1\tCircular-Chromosome\n')
                     lst.close()
-                    lst2=open(dirshort+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.list', 'w')
+                    lst2=open(dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.list', 'w')
                     lst2.write(ctg+'\t1\tCircular-Chromosome\n')
                     lst2.close()
-                    fafile=open(outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa', 'w')
-                    fafile2=open(dirshort+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa', 'w')
+                    fafile=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa', 'w')
+                    fafile2=open(dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa', 'w')
                     fasta=dirshort+'/hifiasm/hifiasm.p_ctg.fasta'
                     n=open(fasta,'r')
                     inline=False
@@ -116,9 +137,9 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                     n.close()
                     fafile.close()
                     fafile2.close()
-                    cmd="gzip "+outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa'
+                    cmd="gzip "+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa'
                     os.system(cmd)
-                    binlistfile.write(results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1\n')
+                    binlistfile.write(results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1\n')
                     contignumber+=1
                 else:
                     #print(ctg)
@@ -157,7 +178,7 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                     b.close()
 
                     today=datetime.today().strftime('%Y%m%d')
-                    outdir=results.out+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.'+today
+                    outdir=results.out+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.'+today
                     cmd="mkdir "+outdir
                     os.system(cmd)
 
@@ -171,10 +192,10 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                                 final_coverage=int(line.split('\t')[4].split(':')[2])
                         print(final_coverage)
                         listfile=True
-                        lst=open(outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.list', 'w')
+                        lst=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.list', 'w')
                         lst.write(ctg+'\t1\tLinear-Chromosome\n')
                         lst.close()
-                        lst2=open(dirshort+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.list', 'w')
+                        lst2=open(dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.list', 'w')
                         lst2.write(ctg+'\t1\tLinear-Chromosome\n')
                         lst2.close()
                     else:
@@ -193,17 +214,17 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                         final_coverage=int(calc_cov/total_len)
                     n.close()
 
-                    y=open(outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.yaml', 'w')
+                    y=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.yaml', 'w')
                     y.write('---'+'\n')
                     #y.write('species: '+cobiontname+'\n')
-                    y.write('specimen: '+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'\n')
+                    y.write('specimen: '+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'\n')
                     y.write('projects:'+'\n')
                     y.write('  - darwin'+'\n')
                     y.write('data_location: Sanger RW'+'\n')
                     if listfile == True:
-                        y.write('chromosome_list: '+outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.tsv'+'\n')
+                        y.write('chromosome_list: '+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.tsv'+'\n')
                     y.write('cobiont_status: cobiont'+'\n')
-                    y.write('primary: '+outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa.gz'+'\n')
+                    y.write('primary: '+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa.gz'+'\n')
                     y.write('jira_queue: DS'+'\n')
                     #y.write('biosample: '+biosample+'\n')
                     y.write('coverage: '+str(final_coverage)+'\n')
@@ -214,8 +235,8 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                     y.write('  - hifiasm (v0.14)'+'\n')
                     y.close()
 
-                    fafile=open(outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa', 'w')
-                    fafile2=open(dirshort+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa', 'w')
+                    fafile=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa', 'w')
+                    fafile2=open(dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa', 'w')
                     fasta=dirshort+'/hifiasm/hifiasm.p_ctg.fasta'
                     n=open(fasta,'r')
                     inline=False
@@ -235,20 +256,243 @@ if (totalfound/total_busco >0.97 and round(totalfound/total_busco)==complete):
                     n.close()
                     fafile.close()
                     fafile2.close()
-                    cmd="gzip "+outdir+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa'
+                    cmd="gzip "+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa'
                     os.system(cmd)
-                    binlistfile.write(results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1\n')
+                    binlistfile.write(results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1\n')
                     contignumber+=1
-#elif total_busco2 > 0 and totalfound2/total_busco2 >0.97:               
+elif (totalfound2/total_busco2 >0.97 and round(totalfound2/total_busco2)==complete2):
+    k=open(dirshort+'/busco/completeness_per_contig.txt')
+    for record in k:
+        record=record.strip()
+        if not record.startswith('#'):
+            if float(record.split('\t')[3].split('%')[0]) > 97 and float(record.split('\t')[5]) > 700000 and float(record.split('\t')[5]) < 2400000:
+                print(record)
+                ctg=record.split('\t')[0]
+                if ctg.endswith('c'):
+                    print(ctg)
+                    gfafile=results.gfa
+                    if results.gfa.endswith('gz'):
+                        cmd='cp '+results.gfa+' '+dirshort+'/'
+                        os.system(cmd)
+                        #print(cmd)
+                        cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1]
+                        #print(cmd)
+                        os.system(cmd)
+                        gfafile=dirshort+'/'+results.gfa.split('/')[-1].split('.gz')[0]
+                    n=open(gfafile,'r')
+                    coverage=0
+                    for line in n:
+                        line=line.strip()
+                        if line.startswith('S\t'+ctg):
+                            coverage=int(line.split('\t')[4].split(':')[2])
+                    n.close()
+                    #print(coverage)
+                    today=datetime.today().strftime('%Y%m%d')
+                    outdir=results.out+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.'+today
+                    cmd="mkdir "+outdir
+                    os.system(cmd)
+                    y=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.yaml', 'w')
+                    y.write('---'+'\n')
+                    #y.write('species: '+cobiontname+'\n')
+                    y.write('specimen: '+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'\n')
+                    y.write('projects:'+'\n')
+                    y.write('  - darwin'+'\n')
+                    y.write('data_location: Sanger RW'+'\n')
+                    y.write('chromosome_list: '+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.tsv'+'\n')
+                    y.write('cobiont_status: cobiont'+'\n')
+                    y.write('primary: '+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa.gz'+'\n')
+                    y.write('jira_queue: DS'+'\n')
+                    #y.write('biosample: '+biosample+'\n')
+                    y.write('coverage: '+str(coverage)+'\n')
+                    #y.write('taxid: '+str(taxid)+'\n')
+                    y.write('assembly_source: MarkerScan'+'\n')
+                    y.write('pipeline:'+'\n')
+                    y.write('  - MarkerScan (v1.0)'+'\n')
+                    y.write('  - hifiasm (v0.14)'+'\n')
+                    y.close()
+                    lst=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.tsv', 'w')
+                    lst.write(ctg+'\t1\tCircular-Chromosome\n')
+                    lst.close()
+                    lst2=open(dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.list', 'w')
+                    lst2.write(ctg+'\t1\tCircular-Chromosome\n')
+                    lst2.close()
+                    fafile=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa', 'w')
+                    fafile2=open(dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa', 'w')
+                    #fasta=dirshort+'/hifiasm/hifiasm.p_ctg.fasta'
+                    cmd='cp '+results.gfa.split('.noseq.gfa')[0]+'.fa.gz '+dirshort+'/'
+                    os.system(cmd)
+                    #print(cmd)
+                    cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa.gz'
+                    #print(cmd)
+                    os.system(cmd)
+                    fasta=dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa'
+                    n=open(fasta,'r')
+                    inline=False
+                    for line in n:
+                        if line.startswith('>'):
+                            if ctg in line:
+                                inline=True
+                                fafile.write(line)
+                                fafile2.write(line)
+                            else:
+                                inline=False
+                        else:
+                            if inline == True:
+                                fafile.write(line)
+                                fafile2.write(line)
+                    n.close()
+                    fafile.close()
+                    fafile2.close()
+                    cmd="gzip "+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa'
+                    os.system(cmd)
+                    binlistfile.write(results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1\n')
+                    contignumber+=1
+                else:
+                    #print(ctg)
+                    ctgs=[]
+                    ctgs.append(ctg)
+                    #buscotable=dirshort+'/buscoAssembly/busco/run_rickettsiales_odb10/full_table.tsv'
+                    buscotable=dirshort+'/busco/full_table.tsv'
+                    buscofound=[]
+                    buscofound_additional={}
+                    listfile=False
+                    b=open(buscotable)
+                    for line in b:
+                        line=line.strip()
+                        if ctg in line:
+                            buscofound.append(line.split('\t')[0])
+                        elif not line.startswith('#') and not 'Missing' in line:
+                            #print(line)
+                            if not line.split('\t')[2] in buscofound_additional:
+                                buscofound_additional[line.split('\t')[2]]=[]
+                            buscofound_additional[line.split('\t')[2]].append(line.split('\t')[0]) 
+                    b.close()
+
+                    b=open(buscotable)
+                    for novelctg in buscofound_additional:
+                        totalbusco=0
+                        for line in b:
+                            line=line.strip()
+                            if novelctg in line:
+                                if not line.split('\t')[0] in buscofound:
+                                    #print(line)
+                                    totalbusco+=1
+                        print(novelctg+'\t'+str(totalbusco)+'\t'+str(len(buscofound_additional[novelctg]))+'\t'+','.join(buscofound_additional[novelctg]))
+                        if totalbusco == len(buscofound_additional[novelctg]):
+                            print(','.join(buscofound_additional[novelctg]))
+                            ctgs.append(novelctg)
+                    b.close()
+
+                    today=datetime.today().strftime('%Y%m%d')
+                    outdir=results.out+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.'+today
+                    cmd="mkdir "+outdir
+                    os.system(cmd)
+
+                    gfafile=dirshort+'/hifiasm/hifiasm.p_ctg.gfa'
+                    n=open(gfafile,'r')
+                    final_coverage=0
+
+                    gfafile=results.gfa
+                    if results.gfa.endswith('gz'):
+                        cmd='cp '+results.gfa+' '+dirshort+'/'
+                        os.system(cmd)
+                        #print(cmd)
+                        cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1]
+                        #print(cmd)
+                        os.system(cmd)
+                        gfafile=dirshort+'/'+results.gfa.split('/')[-1].split('.gz')[0]
+                    n=open(gfafile,'r')
+
+                    if len(ctgs) == 1:
+                        for line in n:
+                            line=line.strip()
+                            if line.startswith('S\t'+ctg):
+                                final_coverage=int(line.split('\t')[4].split(':')[2])
+                        print(final_coverage)
+                        listfile=True
+                        lst=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.list', 'w')
+                        lst.write(ctg+'\t1\tLinear-Chromosome\n')
+                        lst.close()
+                        lst2=open(dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.list', 'w')
+                        lst2.write(ctg+'\t1\tLinear-Chromosome\n')
+                        lst2.close()
+                    else:
+                        calc_cov=0
+                        total_len=0
+                        for line in n:
+                            line=line.strip()
+                            if line.startswith('S') and line.split('\t')[1] in ctgs:
+                                cov=int(line.split('\t')[4].split(':')[2])
+                                if cov == 0:
+                                    cov=1
+                                length=int(line.split('\t')[3].split(':')[2])
+                                total_len+=length
+                                calc_cov+=(cov*length)
+                                print(line.split('\t')[1]+'\t'+str(length)+'\t'+str(cov))    
+                        final_coverage=int(calc_cov/total_len)
+                    n.close()
+
+                    y=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.yaml', 'w')
+                    y.write('---'+'\n')
+                    #y.write('species: '+cobiontname+'\n')
+                    y.write('specimen: '+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'\n')
+                    y.write('projects:'+'\n')
+                    y.write('  - darwin'+'\n')
+                    y.write('data_location: Sanger RW'+'\n')
+                    if listfile == True:
+                        y.write('chromosome_list: '+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.tsv'+'\n')
+                    y.write('cobiont_status: cobiont'+'\n')
+                    y.write('primary: '+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa.gz'+'\n')
+                    y.write('jira_queue: DS'+'\n')
+                    #y.write('biosample: '+biosample+'\n')
+                    y.write('coverage: '+str(final_coverage)+'\n')
+                    #y.write('taxid: '+str(taxid)+'\n')
+                    y.write('assembly_source: MarkerScan'+'\n')
+                    y.write('pipeline:'+'\n')
+                    y.write('  - MarkerScan (v1.0)'+'\n')
+                    y.write('  - hifiasm (v0.14)'+'\n')
+                    y.close()
+
+                    fafile=open(outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa', 'w')
+                    fafile2=open(dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa', 'w')
+                    cmd='cp '+results.gfa.split('.noseq.gfa')[0]+'.fa.gz '+dirshort+'/'
+                    os.system(cmd)
+                    #print(cmd)
+                    cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa.gz'
+                    #print(cmd)
+                    os.system(cmd)
+                    fasta=dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa'
+                    n=open(fasta,'r')
+                    inline=False
+                    for line in n:
+                        if line.startswith('>'):
+                            if line.split()[0].split('>')[1] in ctgs:
+                                print(line)
+                                inline=True
+                                fafile.write(line)
+                                fafile2.write(line)
+                            else:
+                                inline=False
+                        else:
+                            if inline == True:
+                                fafile.write(line)
+                                fafile2.write(line)
+                    n.close()
+                    fafile.close()
+                    fafile2.close()
+                    cmd="gzip "+outdir+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa'
+                    os.system(cmd)
+                    binlistfile.write(results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1\n')
+                    contignumber+=1               
 else:
-    binlistfile.write(results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1\n')
-    fafile=dirshort+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.fa'
-    orig_fafile=results.dir2+'/Anaplasmataceae.finalassembly.fa'
+    binlistfile.write(results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1\n')
+    fafile=dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.fa'
+    orig_fafile=results.dir2+'/'+genus+'/'+genus+'.finalassembly.fa'
     if os.path.getsize(orig_fafile):
         cmd="cp "+orig_fafile+" "+fafile
         os.system(cmd)
-    elif os.path.getsize(results.dir2+'/Anaplasmataceae.ctgs.fa'):
-        k=open(results.dir2+'/Anaplasmataceae.ctgs.fa','r')
+    elif os.path.getsize(results.dir2+'/'+genus+'/'+genus+'.ctgs.fa'):
+        k=open(results.dir2+'/'+genus+'/'+genus+'.ctgs.fa','r')
         o=open(fafile,'w')
         for line in k:
             line=line.strip
@@ -309,8 +553,8 @@ else:
     final_coverage=0
     if total_len > 0:
         final_coverage=int(calc_cov/total_len)
-        manifestfile=open(dirshort+'/'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.manifest.txt','w')
-        manifestfile.write('STUDY\t\nSAMPLE\t\nASSEMBLYNAME\t'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1\nASSEMBLY_TYPE\tMetagenome-Assembled Genome (MAG)\nCOVERAGE\t'+str(final_coverage)+'X\nPROGRAM\tHifiasm\nPLATFORM\tPacBio Sequel II (HiFi)\nMOLECULETYPE\tgenomic DNA\nFASTA\t'+results.tolid+'.Wolbachia_sp_'+str(contignumber)+'.1.mag.fa\n')
+        manifestfile=open(dirshort+'/'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.manifest.txt','w')
+        manifestfile.write('STUDY\t\nSAMPLE\t\nASSEMBLYNAME\t'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1\nASSEMBLY_TYPE\tMetagenome-Assembled Genome (MAG)\nCOVERAGE\t'+str(final_coverage)+'X\nPROGRAM\tHifiasm\nPLATFORM\tPacBio Sequel II (HiFi)\nMOLECULETYPE\tgenomic DNA\nFASTA\t'+results.tolid+'.'+genus+'_sp_'+str(contignumber)+'.1.mag.fa\n')
         manifestfile.close()
 
     contignumber+=1

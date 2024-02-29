@@ -7,6 +7,7 @@ from ete3 import Tree
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-b", type=str, action='store', dest='bin', metavar='INPUT',help='define bin name')
+parser.add_argument("-f", type=str, action='store', dest='fam', metavar='INPUT',help='define family')
 parser.add_argument("-s", type=str, action='store', dest='host', metavar='INPUT',help='define host scientific species name')
 parser.add_argument("-t", type=str, action='store', dest='tree', metavar='INPUT',help='define iqtree SSU')
 parser.add_argument("-ta", type=str, action='store', dest='tax', metavar='INPUT',help='define SSU tax file')
@@ -85,6 +86,15 @@ def getTaxParent(tax_nodes, tax_types, taxid, ranking):
 
     return tax_parents
 
+genus=""
+family=""
+l=open(results.fam,'r')
+for line in l:
+    line=line.strip()
+    genus=line.split(',')[0]
+    family=line.split(',')[1]
+l.close()
+
 taxparents,taxtypes=readNodes(results.nodesfile)
 taxnames,namestax,syn_names=readNames(results.namesfile)
 hosttax=0
@@ -135,66 +145,73 @@ for line in k:
             biospecimen=line.split('\t')[6]
 k.close()
 
-ctgs={}
-m =open(results.ctg,'r')
-for record in m:
-    if record.startswith('>'):
-        ctg=record.split()[0].split('>')[1]
-        ctgs[ctg]=""
-
-t = Tree(results.tree)
-for ctg in ctgs:
-    supergroups=[]
-    node = t.search_nodes(name=ctg)[0]
-    while len(node) < 3:
-        #print(node)
-        node = node.up
-
-    sequences=0
-    for leaf in node:
-        if 'ptg' in leaf.name or 'atg' in leaf.name:
-            sequences=sequences+1
-    
-    if sequences == len(node):
-        node = node.up
-
-    for leaf in node:
-        #print(leaf.name)
-        if leaf.name != ctg and  '_' in leaf.name:
-            supergroup=leaf.name.split('_')[-1]
-            #print(supergroup)
-            if supergroup not in supergroups:
-                supergroups.append(supergroup)
-    if len(supergroups) == 1:
-        ctgs[ctg]=supergroups[0]
-        if multiple_host == True:
-            print(ctg+':Wolbachia sp. (group '+supergroups[0]+')'+'\t'+results.bin)
-        else:
-            print(ctg+':Wolbachia endosymbiont (group '+supergroups[0]+') of '+results.host.replace("_"," ")+'\t'+results.bin)
-    else:
-        ctgs[ctg]='Unclear'
-        if multiple_host == True:
-            print(ctg+':Wolbachia sp. '+'\t'+results.bin)
-        else:
-            print(ctg+':Wolbachia endosymbiont of '+results.host.replace("_"," ")+'\t'+results.bin)
-
-res = len(list(set(list(ctgs.values())))) == 1
-
 o=open(results.out,'w')
-if res == True:
-    supergroup_name=list(ctgs.values())[0]
-    if supergroup_name != "Unclear":
-        if multiple_host == True:
-            o.write('Wolbachia sp. (group '+supergroup_name+') '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+if genus == 'Spiroplasma':
+    if multiple_host == False:
+        o.write('Spiroplasma endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+    else:
+        o.write('Spiroplasma sp. (group '+supergroup_name+') '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+elif genus == 'Wolbachia':
+    ctgs={}
+    m =open(results.ctg,'r')
+    for record in m:
+        if record.startswith('>'):
+            ctg=record.split()[0].split('>')[1]
+            ctgs[ctg]=""
+
+    t = Tree(results.tree)
+    for ctg in ctgs:
+        supergroups=[]
+        node = t.search_nodes(name=ctg)[0]
+        while len(node) < 3:
+            #print(node)
+            node = node.up
+
+        sequences=0
+        for leaf in node:
+            if 'ptg' in leaf.name or 'atg' in leaf.name:
+                sequences=sequences+1
+        
+        if sequences == len(node):
+            node = node.up
+
+        for leaf in node:
+            #print(leaf.name)
+            if leaf.name != ctg and  '_' in leaf.name:
+                supergroup=leaf.name.split('_')[-1]
+                #print(supergroup)
+                if supergroup not in supergroups:
+                    supergroups.append(supergroup)
+        if len(supergroups) == 1:
+            ctgs[ctg]=supergroups[0]
+            if multiple_host == True:
+                print(ctg+':Wolbachia sp. (group '+supergroups[0]+')'+'\t'+results.bin)
+            else:
+                print(ctg+':Wolbachia endosymbiont (group '+supergroups[0]+') of '+results.host.replace("_"," ")+'\t'+results.bin)
         else:
-            o.write('Wolbachia endosymbiont (group '+supergroup_name+') of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+            ctgs[ctg]='Unclear'
+            if multiple_host == True:
+                print(ctg+':Wolbachia sp. '+'\t'+results.bin)
+            else:
+                print(ctg+':Wolbachia endosymbiont of '+results.host.replace("_"," ")+'\t'+results.bin)
+
+    res = len(list(set(list(ctgs.values())))) == 1
+
+    if res == True:
+        supergroup_name=list(ctgs.values())[0]
+        if supergroup_name != "Unclear":
+            if multiple_host == True:
+                o.write('Wolbachia sp. (group '+supergroup_name+') '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+            else:
+                o.write('Wolbachia endosymbiont (group '+supergroup_name+') of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+        else:
+            if multiple_host == True:
+                o.write('Wolbachia sp. '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+            else:
+                o.write('Wolbachia endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
     else:
         if multiple_host == True:
             o.write('Wolbachia sp. '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
         else:
             o.write('Wolbachia endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
-else:
-    if multiple_host == True:
-        o.write('Wolbachia sp. '+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
-    else:
-        o.write('Wolbachia endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+o.close()
