@@ -41,6 +41,11 @@ requirements['Amoebophilaceae']['buscoscore']=35
 requirements['Amoebophilaceae']['minlen']=700000
 requirements['Amoebophilaceae']['maxlen']=1500000
 
+requirements['Rickettsiaceae']={}
+requirements['Rickettsiaceae']['buscoscore']=96
+requirements['Rickettsiaceae']['minlen']=1200000
+requirements['Rickettsiaceae']['maxlen']=2800000
+
 requirements['Coxiellaceae']={}
 requirements['Coxiellaceae']['buscoscore']=80
 requirements['Coxiellaceae']['minlen']=1200000
@@ -317,12 +322,13 @@ elif (totalfound2/total_busco2 >0.97 and round(totalfound2/total_busco2)==comple
                     print(ctg)
                     gfafile=results.gfa
                     if results.gfa.endswith('gz'):
-                        cmd='cp '+results.gfa+' '+dirshort+'/'
-                        os.system(cmd)
-                        #print(cmd)
-                        cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1]
-                        #print(cmd)
-                        os.system(cmd)
+                        if not os.path.isfile(dirshort+'/'+results.gfa.split('/')[-1].split('.gz')[0]):
+                            cmd='cp '+results.gfa+' '+dirshort+'/'
+                            os.system(cmd)
+                            #print(cmd)
+                            cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1]
+                            #print(cmd)
+                            os.system(cmd)
                         gfafile=dirshort+'/'+results.gfa.split('/')[-1].split('.gz')[0]
                     n=open(gfafile,'r')
                     coverage=0
@@ -367,10 +373,11 @@ elif (totalfound2/total_busco2 >0.97 and round(totalfound2/total_busco2)==comple
                     cmd='cp '+results.gfa.split('.noseq.gfa')[0]+'.fa.gz '+dirshort+'/'
                     os.system(cmd)
                     #print(cmd)
-                    cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa.gz'
-                    #print(cmd)
-                    os.system(cmd)
                     fasta=dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa'
+                    if not os.path.isfile(fasta):
+                        cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa.gz'
+                        #print(cmd)
+                        os.system(cmd)
                     n=open(fasta,'r')
                     inline=False
                     for line in n:
@@ -439,12 +446,13 @@ elif (totalfound2/total_busco2 >0.97 and round(totalfound2/total_busco2)==comple
 
                     gfafile=results.gfa
                     if results.gfa.endswith('gz'):
-                        cmd='cp '+results.gfa+' '+dirshort+'/'
-                        os.system(cmd)
-                        #print(cmd)
-                        cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1]
-                        #print(cmd)
-                        os.system(cmd)
+                        if not os.path.isfile(dirshort+'/'+results.gfa.split('/')[-1].split('.gz')[0]):
+                            cmd='cp '+results.gfa+' '+dirshort+'/'
+                            os.system(cmd)
+                            #print(cmd)
+                            cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1]
+                            #print(cmd)
+                            os.system(cmd)
                         gfafile=dirshort+'/'+results.gfa.split('/')[-1].split('.gz')[0]
                     n=open(gfafile,'r')
 
@@ -503,10 +511,11 @@ elif (totalfound2/total_busco2 >0.97 and round(totalfound2/total_busco2)==comple
                     cmd='cp '+results.gfa.split('.noseq.gfa')[0]+'.fa.gz '+dirshort+'/'
                     os.system(cmd)
                     #print(cmd)
-                    cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa.gz'
-                    #print(cmd)
-                    os.system(cmd)
                     fasta=dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa'
+                    if not os.path.isfile(fasta):
+                        cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1].split('.noseq.gfa')[0]+'.fa.gz'
+                        #print(cmd)
+                        os.system(cmd)
                     n=open(fasta,'r')
                     inline=False
                     for line in n:
@@ -565,12 +574,13 @@ else:
     total_len=0
     if results.gfa.endswith('gz'):
         gfafile2=results.gfa.split('.p_ctg')[0]+'.a_ctg.noseq.gfa.gz'
-        cmd='cp '+results.gfa+' '+dirshort+'/'
-        os.system(cmd)
-        #print(cmd)
-        cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1]
-        #print(cmd)
-        os.system(cmd)
+        if not os.path.isfile(dirshort+'/'+results.gfa.split('/')[-1].split('.gz')[0]):
+            cmd='cp '+results.gfa+' '+dirshort+'/'
+            os.system(cmd)
+            #print(cmd)
+            cmd='gunzip '+dirshort+'/'+results.gfa.split('/')[-1]
+            #print(cmd)
+            os.system(cmd)
         cmd='cp '+gfafile2+' '+dirshort+'/'
         #print(cmd)
         os.system(cmd)

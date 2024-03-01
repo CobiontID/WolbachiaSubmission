@@ -11,6 +11,7 @@ scriptdir = workflow.basedir+"/Scripts"
 SSUHMMfile = workflow.basedir+"/SSU_Prok_Euk_Microsporidia.hmm"
 SSUalnfile = workflow.basedir+"/SSU.aln.fa"
 ncbi_taxdir = workflow.basedir+"/taxonomy"
+ricketssiadir= workflow.basedir+"/Rickettsia_fasta"
 
 pwd = config["workingdirectory"]
 pwd_dir = config["pwd_directory"]
@@ -72,6 +73,13 @@ rule CheckPresence:
 				founddir="{outdir}/*Rickettsiella_sp*"
 				if ! [ -n "$(ls -d $founddir)" ]; then
 					echo "Cardinium,Coxiellaceae" >> {output.wolpresence}
+				fi
+			fi	
+
+			if grep -q 'Rickettsia;' {input.taxfile}; then
+				founddir="{outdir}/*Rickettsia_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Rickettsia,Rickettsiaceae" >> {output.wolpresence}
 				fi
 			fi	
 
@@ -301,14 +309,16 @@ rule RunBusco:
 					touch {params.buscodir2}/full_table.tsv
 				fi
 			fi
-            touch {output.completed}
-			if [ -s {pwd}/{params.fam}/{params.fam}.finalassembly.fa ] ; then
-				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/{params.fam}/{params.fam}.finalassembly.fa -o {output.summary}
-			elif [ -s {pwd}/{params.fam}/{params.fam}.ctgs.fa ] ; then
-				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/{params.fam}/{params.fam}.ctgs.fa -o {output.summary}
+            
+			if [ -s {pwd}/$family/$family.finalassembly.fa ] ; then
+				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/$family/$family.finalassembly.fa -o {output.summary}
+			elif [ -s {pwd}/$family/$family.ctgs.fa ] ; then
+				python {scriptdir}/ParseBuscoTableMapping.py -d {params.buscodir2} -i {pwd}/$family/$family.ctgs.fa -o {output.summary}
 			else
 				touch {output.summary} 
 			fi
+
+			touch {output.completed}
             """
 
 def aggregate_buscos2(wildcards):
@@ -433,7 +443,8 @@ rule Build_SSU_Tree:
 	Add 16S to Wolbachia SSU alignment and build phylogenetic tree
 	"""
 	input:
-		fasta16SLoci = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.fa"
+		fasta16SLoci = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.fa",
+		fasta = "{pwd_directory}/{family}/supergroup/bin.{bin}.fa"
 	output:
 		aln16SLoci = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.aln.fa",
 		treefile = "{pwd_directory}/{family}/supergroup/{bin}.ProkSSU.treefile"
@@ -448,6 +459,13 @@ rule Build_SSU_Tree:
 			iqtree -s {output.aln16SLoci} -T {threads} -B 5000 -o Anaplasma_marginale_AF414871.1,Ehrlichia_canis_KJ513196.1
 			mv {output.aln16SLoci}.treefile {output.treefile}
 			rm {output.aln16SLoci}.*
+		elif [ -s {input.fasta16SLoci} ] && [ {params.fam} = 'Rickettsia' ]; then
+			for file in `ls {ricketssiadir}`; do
+				echo {ricketssiadir}'/'$file >> {pwd_dir}/{params.fam}/supergroup/ref_genomes_list.txt
+			done
+			fastANI -q {input.fasta} --rl {pwd_dir}/{params.fam}/supergroup/ref_genomes_list.txt -t {threads} -o {output.treefile}
+			touch {output.aln16SLoci}
+			rm {pwd_dir}/{params.fam}/supergroup/ref_genomes_list.txt
 		else
 			touch {output.aln16SLoci} {output.treefile}
 		fi

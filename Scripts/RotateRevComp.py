@@ -25,7 +25,7 @@ for line in l:
     family=line.split(',')[1]
 l.close()
 
-if family == 'Anaplasmataceae':
+if family in ['Anaplasmataceae','Rickettsiaceae']:
     genename='hemE'
 elif family in ['Flavobacteriales','Betaproteobacteria','Erwiniaceae','Halomonadaceae']:
     genename='dnaE'

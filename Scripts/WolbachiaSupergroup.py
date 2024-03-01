@@ -119,7 +119,7 @@ matches['Arsenophonus'] = ['Arthropoda']
 #matches['Lariskella'] = ['Arthropoda']
 matches['Mesenet'] = ['Arthropoda']
 #matches['Hepanticola'] = ['Arthropoda']
-#matches['Rickettsia'] = ['Arthropoda']
+matches['Rickettsia'] = ['Arthropoda']
 
 #matches['Tremblaya'] = ['Pseudococcidae']  
 matches['Buchnera'] = ['Aphididae'] 
@@ -203,6 +203,24 @@ elif genus == 'Carsonella':
         o.write('Candidatus Carsonella ruddii ('+results.host.replace("_"," ")+')\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
     else:
         o.write('Candidatus Carsonella ruddii\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+elif genus == 'Rickettsia':
+    m =open(results.tree,'r')
+    tisiphia_true=False
+    for record in m:
+        record=record.strip()
+        if 'Tisiphia' in record:
+            tisiphia_true=True
+    m.close()
+    if tisiphia_true==True:
+        if multiple_host == False:
+            o.write('Candidatus Tisiphia endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+        else:
+            o.write('Candidatus Tisiphia sp.\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+    else:
+        if multiple_host == False:
+            o.write('Rickettsia endosymbiont of '+results.host.replace("_"," ")+'\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
+        else:
+            o.write('Rickettsia sp.\tNovel Species\t'+results.host.replace("_"," ")+'\tPRJEB40665\tNovel endosymbionts from dToL samples\t'+results.bin+'\n')
 elif genus == 'Wolbachia':
     ctgs={}
     m =open(results.ctg,'r')
