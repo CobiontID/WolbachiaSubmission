@@ -41,43 +41,73 @@ rule CheckPresence:
 	shell:
 			"""
 			if grep -q 'Wolbachia;' {input.taxfile}; then
-				echo "Wolbachia,Anaplasmataceae" >> {output.wolpresence}
+				founddir="{outdir}/*Wolbachia_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Wolbachia,Anaplasmataceae" >> {output.wolpresence}
+				fi
 			fi
 
 			if grep -q 'Mesenet;' {input.taxfile}; then
-				echo "Mesenet,Anaplasmataceae" >> {output.wolpresence}
+				founddir="{outdir}/*Mesenet_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Mesenet,Anaplasmataceae" >> {output.wolpresence}
+				fi
 			fi
 
 			if grep -q 'Spiroplasma;' {input.taxfile}; then
-				echo "Spiroplasma,Spiroplasmataceae" >> {output.wolpresence}
+				founddir="{outdir}/*Spiroplasma_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Spiroplasma,Spiroplasmataceae" >> {output.wolpresence}
+				fi
 			fi
 
 			if grep -q 'Cardinium;' {input.taxfile}; then
-				echo "Cardinium,Amoebophilaceae" >> {output.wolpresence}
+				founddir="{outdir}/*Cardinium_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Cardinium,Amoebophilaceae" >> {output.wolpresence}
+				fi
 			fi
 
 			if grep -q 'Rickettsiella;' {input.taxfile}; then
-				echo "Cardinium,Coxiellaceae" >> {output.wolpresence}
+				founddir="{outdir}/*Rickettsiella_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Cardinium,Coxiellaceae" >> {output.wolpresence}
+				fi
 			fi	
 
 			if grep -q 'Arsenophonus;' {input.taxfile}; then
-				echo "Arsenophonus,Morganellaceae" >> {output.wolpresence}
+				founddir="{outdir}/*Arsenophonus_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Arsenophonus,Morganellaceae" >> {output.wolpresence}
+				fi
 			fi
 
 			if grep -q 'Zinderia;' {input.taxfile}; then
-				echo "Zinderia,Oxalobacteraceae" >> {output.wolpresence}
+				founddir="{outdir}/*Zinderia_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Zinderia,Oxalobacteraceae" >> {output.wolpresence}
+				fi
 			fi	
 
 			if grep -q 'Buchnera;' {input.taxfile}; then
-				echo "Buchnera,Erwiniaceae" >> {output.wolpresence}
+				founddir="{outdir}/*Buchnera_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Buchnera,Erwiniaceae" >> {output.wolpresence}
+				fi
 			fi	
 
 			if grep -q 'Portiera;' {input.taxfile}; then
-				echo "Portiera,Halomonadaceae" >> {output.wolpresence}
+				founddir="{outdir}/*Portiera_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Portiera,Halomonadaceae" >> {output.wolpresence}
+				fi
 			fi	
 
 			if grep -q 'Carsonella;' {input.taxfile}; then
-				echo "Carsonella,Halomonadaceae" >> {output.wolpresence}
+				founddir="{outdir}/*Carsonella_sp*"
+				if ! [ -n "$(ls -d $founddir)" ]; then
+					echo "Carsonella,Halomonadaceae" >> {output.wolpresence}
+				fi
 			fi																
 			"""
 
