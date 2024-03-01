@@ -64,18 +64,6 @@ rule CheckPresence:
 				echo "Arsenophonus,Morganellaceae" >> {output.wolpresence}
 			fi
 
-			if grep -q 'Lariskella;' {input.taxfile}; then
-				echo "Lariskella,Midichloriaceae" >> {output.wolpresence}
-			fi
-
-			if grep -q 'Sulcia;' {input.taxfile}; then
-				echo "Sulcia,Flavobacteriales" >> {output.wolpresence}
-			fi
-
-			if grep -q 'Tremblaya;' {input.taxfile}; then
-				echo "Tremblaya,Betaproteobacteria" >> {output.wolpresence}
-			fi	
-
 			if grep -q 'Zinderia;' {input.taxfile}; then
 				echo "Zinderia,Oxalobacteraceae" >> {output.wolpresence}
 			fi	
@@ -90,7 +78,7 @@ rule CheckPresence:
 
 			if grep -q 'Carsonella;' {input.taxfile}; then
 				echo "Carsonella,Halomonadaceae" >> {output.wolpresence}
-			fi																	
+			fi																
 			"""
 
 checkpoint CheckPresenceCobionts:
@@ -112,7 +100,7 @@ checkpoint CheckPresenceCobionts:
             	do
             		shortname=`echo $p | cut -d, -f1`
 					family=`echo $p | cut -d, -f2`       
-                	echo $p > {output.famdir}/genus.$family.txt
+                	echo $p > {output.famdir}/genus.$shortname.txt
             	done < {input.wolpresence}
 			fi
 			"""
@@ -140,25 +128,26 @@ rule RunHifiasm:
 	conda: "envs/hifiasm_seqtk.yaml"
 	shell:
             """
+			family=`cut -f2 -d',' {input.generafiles}`
 			if [ ! -d {output.dirname2} ]; then
 				mkdir {output.dirname2}
-				cp {input.fasta_reads}/{params.fam}/kraken.fa {pwd_dir}/{params.fam}/hifiasm/reads.fa
+				cp {input.fasta_reads}/$family/kraken.fa {pwd_dir}/{params.fam}/hifiasm/reads.fa
 			fi
-            if [ -s {input.fasta_reads}/{params.fam}/kraken.fa ] && [ ! -s {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.noseq.gfa ] ; then
-				echo {input.fasta_reads}/{params.fam}/kraken.fa
-				echo {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.noseq.gfa
-				linecount=$(grep -c '>' < {input.fasta_reads}/{params.fam}/kraken.fa)
+            if [ -s {input.fasta_reads}/$family/kraken.fa ] && [ ! -s {params.dirname}/$family/hifiasm/hifiasm.p_ctg.noseq.gfa ] ; then
+				echo {input.fasta_reads}/$family/kraken.fa
+				echo {params.dirname}/$family/hifiasm/hifiasm.p_ctg.noseq.gfa
+				linecount=$(grep -c '>' < {input.fasta_reads}/$family/kraken.fa)
 				if [ $linecount -ge 50000 ]; then
-					seqtk sample {input.fasta_reads}/{params.fam}/kraken.fa 50000 > {pwd_dir}/{params.fam}/hifiasm/reads.fa
+					seqtk sample {input.fasta_reads}/$family/kraken.fa 50000 > {pwd_dir}/{params.fam}/hifiasm/reads.fa
 				fi
 				hifiasm -o {params.assemblyprefix} -t {threads} {pwd_dir}/{params.fam}/hifiasm/reads.fa -D 10 -l 1 -s 0.999 || true
 				mv {pwd_dir}/{params.fam}/hifiasm/hifiasm.bp.p_ctg.gfa  {output.gfa}
 				awk '/^S/{{print ">"$2"\\n"$3}}' {output.gfa} | fold > {output.fasta} || true
 				faidx {output.fasta}
 			else
-				cp {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.gfa {output.gfa} 
-				cp {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.fasta {output.fasta} 
-				cp {params.dirname}/{params.fam}/hifiasm/hifiasm.p_ctg.fasta.fai {output.fai}
+				cp {params.dirname}/$family/hifiasm/hifiasm.p_ctg.gfa {output.gfa} 
+				cp {params.dirname}/$family/hifiasm/hifiasm.p_ctg.fasta {output.fasta} 
+				cp {params.dirname}/$family/hifiasm/hifiasm.p_ctg.fasta.fai {output.fai}
 			fi
 			touch {output.completed}
 			"""
@@ -198,15 +187,17 @@ rule RunBuscoAssembly:
 	threads: 10
 	shell:
             """
+			family=`cut -f2 -d',' {input.generafiles}`
+
 			if [ ! -d {params.buscodir2} ]; then
 				mkdir {params.buscodir2}
 			fi
 
-			if [ -f {params.buscodir}/{params.fam}/buscoAssembly/busco/run*/full_table.tsv ] || [ -f {params.buscodir}/{params.fam}/buscoAssembly/full_table.tsv ]; then
-				if [ -f {params.buscodir}/{params.fam}/buscoAssembly/full_table.tsv ]; then
-					cp {params.buscodir}/{params.fam}/buscoAssembly/full_table.tsv {params.buscodir2}
+			if [ -f {params.buscodir}/$family/buscoAssembly/busco/run*/full_table.tsv ] || [ -f {params.buscodir}/$family/buscoAssembly/full_table.tsv ]; then
+				if [ -f {params.buscodir}/$family/buscoAssembly/full_table.tsv ]; then
+					cp {params.buscodir}/$family/buscoAssembly/full_table.tsv {params.buscodir2}
 				else
-					cp {params.buscodir}/{params.fam}/buscoAssembly/busco/run*/full_table.tsv {params.buscodir2}
+					cp {params.buscodir}/$family/buscoAssembly/busco/run*/full_table.tsv {params.buscodir2}
 				fi
 			else
 				if [ -s {input.circgenome} ] ; then
@@ -258,15 +249,17 @@ rule RunBusco:
 	threads: 10
 	shell:
             """
+			family=`cut -f2 -d',' {input.generafiles}`
+
 			if [ ! -d {params.buscodir2} ]; then
 				mkdir {params.buscodir2}
 			fi
 
-			if [ -f {params.buscodir}/{params.fam}/busco/busco/run*/full_table.tsv ] || [ -f {params.buscodir}/{params.fam}/busco/full_table.tsv ]; then
-				if [ -f {params.buscodir}/{params.fam}/busco/full_table.tsv ]; then
-					cp {params.buscodir}/{params.fam}/busco/full_table.tsv {params.buscodir2}
+			if [ -f {params.buscodir}/$family/busco/busco/run*/full_table.tsv ] || [ -f {params.buscodir}/$family/busco/full_table.tsv ]; then
+				if [ -f {params.buscodir}/$family/busco/full_table.tsv ]; then
+					cp {params.buscodir}/$family/busco/full_table.tsv {params.buscodir2}
 				else
-					cp {params.buscodir}/{params.fam}/busco/busco/run*/full_table.tsv {params.buscodir2}
+					cp {params.buscodir}/$family/busco/busco/run*/full_table.tsv {params.buscodir2}
 				fi
 			else
 				if [ -s {pwd}/{params.fam}.finalassembly.fa ] ; then
@@ -420,7 +413,7 @@ rule Build_SSU_Tree:
 	threads: 10
 	shell:
 		"""
-		if [ -s {input.fasta16SLoci} ] && [ {params.fam} = 'Anaplasmataceae' ]; then
+		if [ -s {input.fasta16SLoci} ] && [ {params.fam} = 'Wolbachia' ]; then
 			mafft --add {input.fasta16SLoci} --reorder {SSUalnfile} > {output.aln16SLoci}
 			iqtree -s {output.aln16SLoci} -T {threads} -B 5000 -o Anaplasma_marginale_AF414871.1,Ehrlichia_canis_KJ513196.1
 			mv {output.aln16SLoci}.treefile {output.treefile}
@@ -549,7 +542,8 @@ rule AnnotateRotate:
 	"""
 	input:
 		fasta = "{pwd_directory}/{family}/supergroup/bin.{circ}.fa",
-		binname= "{pwd_directory}/{family}/circular/bin.{circ}.txt"
+		binname= "{pwd_directory}/{family}/circular/bin.{circ}.txt",
+		generafiles = "{pwd_directory}/families/genus.{family}.txt",
 	output:
 		circ_fa = "{pwd_directory}/{family}/circular/{circ}.fa"
 	params:
@@ -560,7 +554,7 @@ rule AnnotateRotate:
 	shell:
 		"""
 		prokka --cpus {threads} --outdir {pwd_dir}/{params.fam}/circular/{params.circname}.prokka --prefix {params.circname} {input.fasta}
-		python {scriptdir}/RotateRevComp.py -gff {pwd_dir}/{params.fam}/circular/{params.circname}.prokka/{params.circname}.gff -fa {input.fasta} -o {output.circ_fa} -f {params.fam}
+		python {scriptdir}/RotateRevComp.py -gff {pwd_dir}/{params.fam}/circular/{params.circname}.prokka/{params.circname}.gff -fa {input.fasta} -o {output.circ_fa} -f {input.generafiles}
 		today="$(date +'%Y%m%d')"
 		rm {outdir}"/"{params.circname}"."$today"/"{params.circname}".fa.gz"
 		cp {output.circ_fa} {outdir}"/"{params.circname}"."$today

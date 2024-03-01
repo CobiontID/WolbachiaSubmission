@@ -16,9 +16,18 @@ args = parser.parse_args()
 species=args.outfile.split('/')[-1].split('.fa')[0]
 fastafile = args.fa
 
-if args.fam == 'Anaplasmataceae':
+genus=""
+family=""
+l=open(args.fam,'r')
+for line in l:
+    line=line.strip()
+    genus=line.split(',')[0]
+    family=line.split(',')[1]
+l.close()
+
+if family == 'Anaplasmataceae':
     genename='hemE'
-elif args.fam in ['Flavobacteriales','Betaproteobacteria','Erwiniaceae','Halomonadaceae']:
+elif family in ['Flavobacteriales','Betaproteobacteria','Erwiniaceae','Halomonadaceae']:
     genename='dnaE'
 else:
     genename='dnaA'
