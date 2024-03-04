@@ -552,7 +552,9 @@ checkpoint concatenate_supergroups:
 		python {scriptdir}/taxid_requests.py -i {pwd_dir}/{params.fam}/taxid_request.txt -o {output.reqfile}
 
 		rm {pwd_dir}/{params.fam}/taxid.nr.txt
-		sh {scriptdir}/email_request_taxids.sh {output.reqfile} {email}
+		if [ ! -z "{email}" -a "{email}" != " " ]; then
+			sh {scriptdir}/email_request_taxids.sh {output.reqfile} {email}
+		fi
 		touch {output.donefile}
 		"""
 
@@ -607,8 +609,9 @@ rule AnnotateRotate:
 		rm {outdir}"/"{params.circname}"."$today"/"{params.circname}".fa.gz"
 		cp {output.circ_fa} {outdir}"/"{params.circname}"."$today
 		gzip {outdir}"/"{params.circname}"."$today"/"{params.circname}".fa"
-
-		sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"{params.circname}"."$today"/"{params.circname}".yaml" {email}
+		if [ ! -z "{email}" -a "{email}" != " " ]; then
+			sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"{params.circname}"."$today"/"{params.circname}".yaml" {email}
+		fi
 		"""
 
 def aggregate_circs(wildcards):
@@ -649,10 +652,14 @@ checkpoint Bin_Linear:
 			today="$(date +'%Y%m%d')"
 			if [ -f {pwd_dir}/{params.fam}/$shortname.list ] && grep "Linear" {pwd_dir}/{params.fam}/$shortname.list ; then
 				touch {output.superdir}/bin.$shortname.txt
-				sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"$shortname"."$today"/"$shortname".yaml" {email}
+				if [ ! -z "{email}" -a "{email}" != " " ]; then
+					sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"$shortname"."$today"/"$shortname".yaml" {email}
+				fi
 			elif [ ! -f {pwd_dir}/{params.fam}/$shortname.list ] && [ ! -f {pwd_dir}/{params.fam}/$shortname.manifest.txt ] && [ -f {pwd_dir}/{params.fam}/$shortname.metadata.txt ] ; then
 				touch {output.superdir}/bin.$shortname.txt
-				sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"$shortname"."$today"/"$shortname".yaml" {email}
+				if [ ! -z "{email}" -a "{email}" != " " ]; then
+					sh {scriptdir}/cobiont_curation_request.sh {outdir}"/"$shortname"."$today"/"$shortname".yaml" {email}
+				fi
 			fi
         done < {input.binlist}
 		"""

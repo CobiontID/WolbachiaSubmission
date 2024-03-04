@@ -17,6 +17,6 @@ echo "Please review the attached taxonomy ID requests." \
 	| mailx -s "Taxon ID requests for Wolbachia and other endosymbionts from dToL samples" \
 		-A $taxon_request_file $ena_email $sender_email
 
-#echo "Please review the attached taxonomy ID requests."
-#echo $1
-#echo $2
+echo "Please review the attached taxonomy ID requests."
+echo $1
+echo $2
