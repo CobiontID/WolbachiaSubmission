@@ -15,6 +15,6 @@ email: email address from where to send emails to ENA taxid requests, if you lea
 ```
 You now can run this using Singularity:
 ```
-singularity pull docker://emvcaest/wolbachia_submission:latest
-singularity run wolbachia_submission.sif snakemake --cores $threads --use-conda --conda-prefix /opt/conda/ -s /WolbachiaSubmission/Snakefile --configfile $configfile
+singularity pull docker://{repo}/wolbachiasubmission:{tag}
+singularity run wolbachiasubmission.sif snakemake --cores $threads --use-conda --conda-prefix /opt/conda/envs -s /WolbachiaSubmission/Snakefile --configfile $configfile
 ```
