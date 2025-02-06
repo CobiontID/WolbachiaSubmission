@@ -22,8 +22,7 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 # Install mamba
 RUN conda install -n base -c conda-forge mamba=1
 
-RUN git clone https://github.com/CobiontID/WolbachiaSubmission.git /WolbachiaSubmission && \
-    cd /WolbachiaSubmission && \
-    sed -i '/- defaults/d' envs/hifiasm_seqtk.yaml
+WORKDIR /WolbachiaSubmission
+COPY . .
 
 RUN snakemake -p --cores 1 --use-conda --conda-prefix /opt/conda/envs --conda-create-envs-only -s /WolbachiaSubmission/create-envs.smk
